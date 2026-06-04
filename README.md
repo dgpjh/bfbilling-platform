@@ -1,73 +1,111 @@
-# React + TypeScript + Vite
+# 手助网吧 · 加盟管理平台（简化 Demo）
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> 这是一个 React + TypeScript + Vite + Ant Design 5 的轻量原型，演示「代理 / 网吧主」两类角色的注册、登录、关联与门店规模数据展示。
 
-Currently, two official plugins are available:
+## Demo 定位（v2 简化版）
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+为了让 Demo 聚焦核心能力，本版本**只保留三件事**，移除了所有结算/打款/合同签署/激励分润相关的页面与数据：
 
-## React Compiler
+| 类别 | 包含 |
+| --- | --- |
+| ✅ 角色创建 & 登录 | 注册（代理 / 网吧主二选一）→ 实名 → 联系方式 → 提交审核 → 进入控制台 |
+| ✅ 角色之间关联 | 代理 ↔ 网吧主：代理发起申请 → 网吧主审批 → 建立归属关系 |
+| ✅ 双向解绑审批 | 任一方都可发起解绑，需对方审批通过后才生效 |
+| ✅ 角色与网吧关联 | 网吧主：录入多家门店，可分别归属不同代理；散店 = 无代理关联 |
+| ✅ 门店删除 | 网吧主可强删门店（输入门店全名二次确认，不可撤销） |
+| ✅ 网吧规模数据展示 | 终端规模（部署数）、活跃规模（月活/日活）、流水收入（仅展示，不分润） |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 已移除的能力（Demo 暂不支持）
 
-## Expanding the ESLint configuration
+- ❌ 结算/打款/提现页面（提现申请、提现审批、银行账户、放款）
+- ❌ 合同管理（合同签署、模板、合同状态门禁）
+- ❌ 复杂分润可视化（首装激励、档位激励 / 前 200 家分成、CPS 单价、省份分润矩阵、全局池统计）
+- ❌ 运营后台（`/admin/*`，包含代理列表、结算批次、合同审核、提现审批）
+- ❌ 收益趋势图、收益构成、月报、银行账户管理
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 角色与登录入口（v2.3 接入 QQ 登录）
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+打开根路径 `/` 进入 **QQ 登录页**，提供两种登录方式：
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+| 方式 | 说明 |
+| --- | --- |
+| 🟦 **QQ 扫码** | 默认 Tab。打开后自动模拟流程：5 秒「等待扫码」→「已扫码」→「确认登录」→ 跳转控制台。60 秒不操作二维码过期，可点「刷新二维码」。 |
+| 🟦 **QQ 号 + 密码** | 输入 5-12 位 QQ 号（首位非 0，正则校验）+ 密码 → 安全登录。 |
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+> 登录页底部仍保留「🔐 平台审核员入口」灰色超链接，跳转 `/admin/audit` 平台审核台。
+
+Demo 内置两类账号（登录后通过顶部「角色切换」自由切换，无需登出）：
+
+| 角色 | 角色 ID | 默认数据 |
+| --- | --- | --- |
+| 代理 | `A2001` | 已托管 2 家网吧 + 1 条申请待网吧主审批 |
+| 网吧主 | `O20260215` | 4 家门店（2 家关联当前代理 / 2 家散店）+ 1 条来自当前代理的待审批申请 |
+
+## 主要页面（v2.2 流程闭环）
+
+```
+/                    登录页（直接展示登录 + 注册入口 + 平台审核员入口）
+/register            角色注册（代理 / 网吧主三步表单）
+/agent/dashboard     概览首页（角色卡 + 待办横幅 + 4 大指标 + 活跃率 + 动态）
+/agent/my-cafes      统一的「我的网吧」页：
+                       · 代理：托管列表 + 关联新网吧（按 ID 全平台查） + 待铺设 TODO + 解绑/审批
+                       · 网吧主：门店列表（区分平台审核中/已上线/待铺设） + 申请录入 + 解绑/审批 + 删除
+/agent/profile       个人信息（实名 + 联系方式 + 关联汇总）
+/admin/audit         平台审核台（迪越 / 应用宝手助 内部审核员审核网吧录入申请）
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+> v2.2 起新增 **完整业务流程闭环**（B→G）：
+> A. 双方建号 → B. 网吧主提交录入 → C. 平台审核分配 ID → D. 代理 ID 查询发起关联 →
+> E. 网吧主审批 → F. 代理线下铺设霸服 → G. 终端 / 流水数据回传展示
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 核心数据模型（mock）
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```ts
+// src/mock/data.ts
+type MyCafe = {
+  id; name; province; city; address;
+  terminalCount;          // 终端规模
+  monthlyActiveTerminal;  // 月活终端
+  dailyActiveTerminal;    // 日活终端
+  monthRevenue;           // 本月流水（元，仅展示）
+  ownerId;                // 网吧主 ID（必填）
+  agentId?;               // 已通过审批的代理 ID（空 = 散店）
+  status: 'pending' | 'normal';
+  ...
+}
+
+type CafeLinkRequest = {
+  cafeId; ownerId; agentId; agentName; reason;
+  status: 'pending' | 'approved' | 'rejected';
+  ...
+}
+
+type CafeUnlinkRequest = {
+  cafeId; ownerId; agentId; agentName;
+  initiator: 'agent' | 'owner';   // agent 发起 → 网吧主审批；owner 发起 → 代理审批
+  reason; status; ...
+}
 ```
+
+关联模型（核心）：
+- `cafe.ownerId` 写死在录入时——网吧主始终对自家门店负责
+- `cafe.agentId` 由「代理发起申请 → 网吧主审批通过」写入
+- **解绑同样是双向审批**：任一方发起 → 对方审批通过后 `agentId` 才会被清空；同一网吧同时只能存在一条 pending 解绑申请
+- 同一网吧主下的多家网吧可分别归属不同代理；同一代理可托管来自不同网吧主的多家门店
+- 网吧无代理时为「散店」状态
+- 网吧主可调用 `deleteCafe()` 强删门店：会级联清空该门店上所有 pending 申请；UI 强制要求"输入门店全名"二次确认
+
+## 启动
+
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # 生产构建
+```
+
+## 技术栈
+
+- React 19 + TypeScript + Vite
+- React Router v6（HashRouter，路径切换不依赖后端）
+- Ant Design 5（自定义暗色 + 红黑商务主题）
+- 全部数据走 `src/mock/data.ts` 模拟，无后端依赖

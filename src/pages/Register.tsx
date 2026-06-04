@@ -1,17 +1,16 @@
 import { useState } from 'react';
 import {
-  Form, Input, Button, Card, Radio, Cascader, Select, Checkbox,
-  Typography, Divider, Row, Col, Space, Steps, message, Tooltip,
+  Form, Input, Button, Card, Radio, Cascader, Checkbox,
+  Typography, Divider, Row, Col, Space, Steps, Alert, message,
 } from 'antd';
 import {
-  ScanOutlined, SafetyCertificateOutlined, BankOutlined,
+  ScanOutlined, SafetyCertificateOutlined,
   UserOutlined, EnvironmentOutlined, CheckCircleFilled,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import {
-  registerRoleOptions, provinceCityOptions, bankOptions, type RegisterRole,
+  registerRoleOptions, provinceCityOptions, type RegisterRole,
 } from '../mock/data';
-import LinkPicker from '../components/LinkPicker';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -53,12 +52,10 @@ export default function Register() {
   const [form] = Form.useForm();
   const [role, setRole] = useState<RegisterRole>('agent');
   const [subject, setSubject] = useState<'personal' | 'company'>('personal');
-  const [hasBank, setHasBank] = useState(true);
   const [faceVerified, setFaceVerified] = useState(false);
 
   const onSubmit = () => {
     message.success('注册提交成功！资质审核中，可先进入控制台录入网吧');
-    // demo：注册成功后进入对应端，并带 ?from=register 触发"录入网吧"引导
     if (role === 'agent') navigate('/agent/dashboard?from=register');
     else {
       sessionStorage.setItem('demo_role', 'owner');
@@ -66,10 +63,9 @@ export default function Register() {
     }
   };
 
-  // 模拟人脸校验成功（点击二维码区域）
   const mockFace = () => {
     setFaceVerified(true);
-    form.setFieldsValue({ realName: '王小明', idCard: '4403**********1234', accountName: '王小明' });
+    form.setFieldsValue({ realName: '王小明', idCard: '4403**********1234' });
     message.success('人脸校验通过，已回填实名信息（Demo）');
   };
 
@@ -83,7 +79,7 @@ export default function Register() {
             <Title level={2} style={{ color: '#fff', margin: 0 }}>加盟入驻注册</Title>
           </Space>
           <Paragraph style={{ color: 'rgba(255,255,255,0.55)' }}>
-            复用应用宝开发者认证能力 · 实名 / 联系方式 / 收款账户一站式登记
+            复用应用宝开发者认证能力 · 实名 / 联系方式 一站式登记
           </Paragraph>
         </div>
 
@@ -96,7 +92,6 @@ export default function Register() {
               { title: '选择主体' },
               { title: '实名认证' },
               { title: '联系方式' },
-              { title: '收款账户' },
               { title: '提交审核' },
             ]}
           />
@@ -127,22 +122,18 @@ export default function Register() {
             </Form.Item>
 
             {role === 'owner' && (
-              <Form.Item
-                label="关联代理（选填）"
-                name="agentLink"
-                extra="输入代理 ID 可关联到对应代理；不填则由迪越直连结算"
-              >
-                <LinkPicker target="agent" />
-              </Form.Item>
+              <Alert
+                type="info" showIcon style={{ marginBottom: 24 }}
+                message="网吧主无需在注册时关联代理"
+                description="创角完成后，请在「我的网吧」录入你经营的全部门店（一人可管理多家）。代理可主动通过「关联网吧」页对你的网吧发起申请，由你审批通过后才会建立归属关系；未关联的网吧默认为散店，分成由你直连迪越结算。"
+              />
             )}
             {role === 'agent' && (
-              <Form.Item
-                label="关联已建网吧（选填）"
-                name="cafeLink"
-                extra="若你已有合作网吧，可输入网吧 ID 直接关联；也可创角后再录入网吧"
-              >
-                <LinkPicker target="cafe" />
-              </Form.Item>
+              <Alert
+                type="info" showIcon style={{ marginBottom: 24 }}
+                message="代理无需在注册时关联网吧"
+                description="创角完成后，请在「关联网吧」页输入网吧主提供的网吧 ID 发起关联申请。网吧主审批通过后，相应网吧将出现在你的「我托管的网吧」列表中并参与结算分润。"
+              />
             )}
 
             <Form.Item label="主体性质" name="subject" initialValue="personal">
@@ -254,63 +245,13 @@ export default function Register() {
 
             <Divider style={{ borderColor: '#2A1A1C' }} />
 
-            {/* ============ 区块 3：银行账号（结算提现核心）============ */}
-            <Title level={5} style={{ color: '#FF5562' }}>④ 收款账户（结算提现）</Title>
-            <Form.Item label="是否有银行账号" name="hasBank" initialValue="yes">
-              <Radio.Group value={hasBank ? 'yes' : 'no'} onChange={(e) => setHasBank(e.target.value === 'yes')}>
-                <Radio value="yes">是</Radio>
-                <Radio value="no">否（可先入驻，提现前补全）</Radio>
-              </Radio.Group>
-            </Form.Item>
-
-            {hasBank && (
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Form.Item label={
-                    <span>开户名 <Tooltip title="须与实名 / 企业主体一致，否则提现会因'户名不符'失败"><SafetyCertificateOutlined style={{ color: '#FAAD14' }} /></Tooltip></span>
-                  } name="accountName">
-                    <PulledInput placeholder="等待实名信息拉取..." />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item label="开户行" name="bank" rules={[{ required: true, message: '请选择开户行' }]}>
-                    <Select placeholder="请选择开户行" prefix={<BankOutlined />} options={bankOptions.map((b) => ({ value: b, label: b }))} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item label="银行账号" name="bankAccount" rules={[{ required: true, message: '请输入银行账号' }]}>
-                    <Input placeholder="请输入银行账号" />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    label="确认银行账号" name="bankAccountConfirm"
-                    dependencies={['bankAccount']}
-                    rules={[
-                      { required: true, message: '请再次输入银行账号' },
-                      ({ getFieldValue }) => ({
-                        validator(_, v) {
-                          if (!v || getFieldValue('bankAccount') === v) return Promise.resolve();
-                          return Promise.reject(new Error('两次输入的银行账号不一致'));
-                        },
-                      }),
-                    ]}
-                  >
-                    <Input placeholder="请确认银行账号" />
-                  </Form.Item>
-                </Col>
-              </Row>
-            )}
-
-            <Divider style={{ borderColor: '#2A1A1C' }} />
-
             {/* ============ 协议 + 提交 ============ */}
             <Form.Item name="agreeSms" valuePropName="checked" rules={[{ validator: (_, v) => v ? Promise.resolve() : Promise.reject(new Error('请同意接收审核通知短信')) }]}>
               <Checkbox style={{ color: 'rgba(255,255,255,0.75)' }}>同意接受审核通知短信到此手机号码，手机号将严格保密</Checkbox>
             </Form.Item>
             <Form.Item name="agreeProtocol" valuePropName="checked" rules={[{ validator: (_, v) => v ? Promise.resolve() : Promise.reject(new Error('请同意合作协议')) }]}>
               <Checkbox style={{ color: 'rgba(255,255,255,0.75)' }}>
-                同意接受 <a style={{ color: '#FF5562' }}>《手助网吧加盟合作协议》</a>，在网吧终端分发应用并参与结算
+                同意接受 <a style={{ color: '#FF5562' }}>《手助网吧加盟合作协议》</a>，加入手助网吧加盟体系
               </Checkbox>
             </Form.Item>
 

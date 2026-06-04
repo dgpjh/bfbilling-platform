@@ -38,7 +38,7 @@ export default function LinkPicker({ target, value, onChange }: LinkPickerProps)
       <div style={{ marginTop: 6, minHeight: 22 }}>
         {!typed ? (
           <Text type="secondary" style={{ fontSize: 12 }}>
-            {target === 'agent' ? '未关联代理：将由迪越直连结算' : '未关联网吧：可创角后再录入 / 关联'}
+            {target === 'agent' ? '未关联代理：当前网吧为散店状态' : '未关联网吧：可创角后再录入 / 关联'}
           </Text>
         ) : hit ? (
           <Space size={6}>

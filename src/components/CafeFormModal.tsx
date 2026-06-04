@@ -1,6 +1,5 @@
-import { Modal, Form, Input, InputNumber, Cascader, Row, Col, message } from 'antd';
+import { Modal, Form, Input, InputNumber, Cascader, Row, Col, Alert, message } from 'antd';
 import { provinceCityOptions, addMyCafe } from '../mock/data';
-import LinkPicker from './LinkPicker';
 
 export type CafeFormModalProps = {
   open: boolean;
@@ -8,23 +7,24 @@ export type CafeFormModalProps = {
   onSuccess?: () => void;
 };
 
-// 网吧录入弹窗：注册后引导 + 终端管理"新增网吧"共用
+// 网吧录入弹窗：网吧主提交录入申请。
+// ⚠️ 提交后默认进入「平台审核中」状态，由迪越/应用宝手助审核员通过后才会分配正式网吧 ID（MCxxxx）。
+//    审核通过前：无 ID、不能被代理关联；审核通过后即可在「我的网吧」页看到 ID 并分享给代理。
 export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModalProps) {
   const [form] = Form.useForm();
 
   const onOk = async () => {
     const v = await form.validateFields();
-    addMyCafe({
+    const cafe = addMyCafe({
       name: v.name,
       province: v.region[0],
       city: v.region[1],
       address: v.address,
-      terminalCount: v.terminalCount,
+      declaredTerminalCount: v.declaredTerminalCount,
       contact: v.contact,
       phone: v.phone,
-      businessHours: v.businessHours || '00:00 - 24:00',
     });
-    message.success('网吧录入成功！默认全局结算，待运营下发省渠道号后转为区域结算');
+    message.success(`录入申请已提交，待平台审核（临时编号 ${cafe.tempId}）`);
     form.resetFields();
     onClose();
     onSuccess?.();
@@ -32,16 +32,21 @@ export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModa
 
   return (
     <Modal
-      title="录入网吧"
+      title="申请录入网吧"
       open={open}
       onOk={onOk}
       onCancel={() => { form.resetFields(); onClose(); }}
-      okText="提交录入"
+      okText="提交录入申请"
       cancelText="取消"
       width={640}
       destroyOnClose
     >
-      <Form form={form} layout="vertical" requiredMark style={{ marginTop: 12 }}>
+      <Alert
+        type="info" showIcon style={{ marginBottom: 16 }}
+        message="录入后需经平台审核 → 分配正式网吧 ID"
+        description="提交后由迪越 / 应用宝手助审核团队人工审核（一般 1 个工作日内）。审核通过后才会分配 MCxxxx 网吧 ID，届时可分享给代理发起关联。"
+      />
+      <Form form={form} layout="vertical" requiredMark style={{ marginTop: 4 }}>
         <Form.Item label="网吧名称" name="name" rules={[{ required: true, message: '请输入网吧名称' }]}>
           <Input placeholder="如：星辰电竞·南山旗舰店" />
         </Form.Item>
@@ -56,7 +61,12 @@ export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModa
 
         <Row gutter={16}>
           <Col span={8}>
-            <Form.Item label="终端数（台）" name="terminalCount" rules={[{ required: true, message: '请输入终端数' }]}>
+            <Form.Item
+              label="预计终端数（台）"
+              name="declaredTerminalCount"
+              rules={[{ required: true, message: '请输入预计终端数' }]}
+              extra="实际数量以铺设上线后为准"
+            >
               <InputNumber min={1} max={5000} style={{ width: '100%' }} placeholder="如 100" />
             </Form.Item>
           </Col>
@@ -71,15 +81,6 @@ export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModa
             </Form.Item>
           </Col>
         </Row>
-
-        <Form.Item label="营业时间" name="businessHours" initialValue="00:00 - 24:00">
-          <Input placeholder="如 00:00 - 24:00" />
-        </Form.Item>
-
-        {/* 复用注册同款关联交互：录入网吧时可选择性关联代理（不填则直连迪越） */}
-        <Form.Item label="关联代理（选填）" name="agentLink" extra="输入代理 ID 可将本网吧挂靠到对应代理；不填则由迪越直连结算">
-          <LinkPicker target="agent" />
-        </Form.Item>
       </Form>
     </Modal>
   );

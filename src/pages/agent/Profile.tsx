@@ -1,14 +1,19 @@
 import { useState } from 'react';
 import {
   Card, Row, Col, Tag, Descriptions, Button, Space, Avatar, Typography,
-  message, Modal, Form, Input, Tooltip,
+  message, Modal, Form, Input, Tooltip, List, Empty,
 } from 'antd';
 import {
   IdcardOutlined, UserOutlined, PhoneOutlined, MailOutlined,
-  BankOutlined, EnvironmentOutlined, SafetyCertificateOutlined,
-  CopyOutlined, EditOutlined, LinkOutlined, CheckCircleFilled,
+  EnvironmentOutlined, SafetyCertificateOutlined,
+  CopyOutlined, EditOutlined, LinkOutlined, CheckCircleFilled, ShopOutlined,
 } from '@ant-design/icons';
-import { getMyProfile, type AccountProfile } from '../../mock/data';
+import { useNavigate } from 'react-router-dom';
+import {
+  getMyProfile, getCafesByOwner, getCafesByAgent,
+  CURRENT_AGENT_ID, CURRENT_OWNER_ID,
+  type AccountProfile,
+} from '../../mock/data';
 
 const { Text, Title } = Typography;
 
@@ -26,10 +31,19 @@ function SectionTitle({ icon, text, extra }: { icon: React.ReactNode; text: stri
 }
 
 export default function AgentProfile() {
+  const navigate = useNavigate();
   // 当前角色档案（按 demo 身份取）
   const [profile, setProfile] = useState<AccountProfile>(() => ({ ...getMyProfile() }));
   const isAgent = profile.role === 'agent';
   const roleLabel = isAgent ? '代理' : '网吧主';
+
+  // 网吧关联汇总（按角色取数）
+  const linkedCafes = isAgent
+    ? getCafesByAgent(CURRENT_AGENT_ID)
+    : getCafesByOwner(CURRENT_OWNER_ID);
+  const totalTerminals = linkedCafes.reduce((s, c) => s + c.terminalCount, 0);
+  const linkedAgentCount = !isAgent ? linkedCafes.filter((c) => c.agentId).length : 0;
+  const standaloneCount = !isAgent ? linkedCafes.filter((c) => !c.agentId).length : 0;
 
   // 编辑联系方式弹窗
   const [editOpen, setEditOpen] = useState(false);
@@ -147,40 +161,100 @@ export default function AgentProfile() {
           </Card>
         </Col>
 
-        {/* 银行账户 */}
-        <Col xs={24} lg={12}>
+        {/* 关联关系（按角色展示）+ 账户状态 */}
+        <Col xs={24}>
           <Card
             style={{ background: '#1A1212', border: '1px solid #2A1A1C', marginBottom: 16 }}
-            title={<SectionTitle icon={<BankOutlined style={{ color: '#FFD66B' }} />} text="结算银行账户" extra={<Tag color="default" style={{ marginRight: 0 }}>提现放款账户</Tag>} />}
+            title={
+              <SectionTitle
+                icon={<LinkOutlined style={{ color: '#B388FF' }} />}
+                text={isAgent ? '已托管网吧' : '我管理的网吧'}
+                extra={
+                  <Button
+                    size="small" type="link"
+                    onClick={() => navigate('/agent/my-cafes')}
+                  >
+                    前往管理 →
+                  </Button>
+                }
+              />
+            }
           >
-            <Descriptions column={1} size="middle" labelStyle={{ color: 'rgba(255,255,255,0.45)', width: 110 }} contentStyle={{ color: 'rgba(255,255,255,0.9)' }}>
-              <Descriptions.Item label="开户行">{profile.bank}</Descriptions.Item>
-              <Descriptions.Item label="银行账号">{profile.bankAccount}</Descriptions.Item>
-              <Descriptions.Item label="开户名">{profile.accountName}</Descriptions.Item>
-            </Descriptions>
-          </Card>
-        </Col>
-
-        {/* 关联关系 + 账户状态 */}
-        <Col xs={24} lg={12}>
-          <Card
-            style={{ background: '#1A1212', border: '1px solid #2A1A1C', marginBottom: 16 }}
-            title={<SectionTitle icon={<LinkOutlined style={{ color: '#B388FF' }} />} text="关联与账户状态" />}
-          >
-            <Descriptions column={1} size="middle" labelStyle={{ color: 'rgba(255,255,255,0.45)', width: 110 }} contentStyle={{ color: 'rgba(255,255,255,0.9)' }}>
-              {isAgent ? (
-                <Descriptions.Item label="关联网吧">
-                  {profile.linkedId
-                    ? <Space><Tag color="purple">{profile.linkedId}</Tag>{profile.linkedName}</Space>
-                    : <Text style={{ color: 'rgba(255,255,255,0.4)' }}>暂无关联，可前往「我的网吧」录入</Text>}
-                </Descriptions.Item>
-              ) : (
-                <Descriptions.Item label="关联代理">
-                  {profile.linkedId
-                    ? <Space><Tag color="purple">{profile.linkedId}</Tag>{profile.linkedName}</Space>
-                    : <Tag color="blue">未关联代理 · 直连迪越结算</Tag>}
-                </Descriptions.Item>
+            {/* 顶部摘要 */}
+            <div style={{ display: 'flex', gap: 24, marginBottom: 12, flexWrap: 'wrap' }}>
+              <div>
+                <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>网吧数</Text>
+                <div style={{ color: '#fff', fontSize: 22, fontWeight: 700 }}>
+                  {linkedCafes.length} <span style={{ fontSize: 13, opacity: 0.6 }}>家</span>
+                </div>
+              </div>
+              <div>
+                <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>终端数</Text>
+                <div style={{ color: '#fff', fontSize: 22, fontWeight: 700 }}>
+                  {totalTerminals} <span style={{ fontSize: 13, opacity: 0.6 }}>台</span>
+                </div>
+              </div>
+              {!isAgent && (
+                <>
+                  <div>
+                    <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>已关联代理</Text>
+                    <div style={{ color: '#B388FF', fontSize: 22, fontWeight: 700 }}>
+                      {linkedAgentCount} <span style={{ fontSize: 13, opacity: 0.6 }}>家</span>
+                    </div>
+                  </div>
+                  <div>
+                    <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>散店</Text>
+                    <div style={{ color: '#5BB3FF', fontSize: 22, fontWeight: 700 }}>
+                      {standaloneCount} <span style={{ fontSize: 13, opacity: 0.6 }}>家</span>
+                    </div>
+                  </div>
+                </>
               )}
+            </div>
+
+            {/* 网吧明细 */}
+            {linkedCafes.length === 0 ? (
+              <Empty
+                image={<ShopOutlined style={{ fontSize: 36, color: 'rgba(255,255,255,0.25)' }} />}
+                description={
+                  <Text style={{ color: 'rgba(255,255,255,0.45)' }}>
+                    {isAgent ? '暂未托管任何网吧，前往「关联网吧」发起申请' : '暂未录入网吧'}
+                  </Text>
+                }
+              />
+            ) : (
+              <List
+                size="small"
+                dataSource={linkedCafes.slice(0, 5)}
+                renderItem={(c) => (
+                  <List.Item style={{ borderBottom: '1px solid #2A1A1C', padding: '8px 0' }}>
+                    <Space size={8} wrap>
+                      <Tag color="gold" style={{ marginRight: 0 }}>{c.id}</Tag>
+                      <Text style={{ color: 'rgba(255,255,255,0.85)' }}>{c.name}</Text>
+                      <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
+                        {c.province}·{c.city}
+                      </Text>
+                      {!isAgent && (
+                        c.agentId
+                          ? <Tag color="purple">归属代理 {c.agentId}</Tag>
+                          : <Tag color="blue">散店</Tag>
+                      )}
+                    </Space>
+                  </List.Item>
+                )}
+                footer={linkedCafes.length > 5 ? (
+                  <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>
+                    仅显示前 5 家，共 {linkedCafes.length} 家。前往
+                    <a onClick={() => navigate(isAgent ? '/agent/my-cafes' : '/agent/my-cafes')}> 查看全部</a>
+                  </Text>
+                ) : null}
+              />
+            )}
+
+            <Descriptions column={1} size="middle" style={{ marginTop: 12 }}
+              labelStyle={{ color: 'rgba(255,255,255,0.45)', width: 110 }}
+              contentStyle={{ color: 'rgba(255,255,255,0.9)' }}
+            >
               <Descriptions.Item label={<Space size={4}><SafetyCertificateOutlined />认证状态</Space>}>
                 {profile.authStatus === 'verified'
                   ? <Tag icon={<CheckCircleFilled />} color="success">已通过资质审核</Tag>
@@ -220,7 +294,7 @@ export default function AgentProfile() {
             <Input prefix={<EnvironmentOutlined />} placeholder="请输入详细地址" />
           </Form.Item>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            提示：实名信息与银行账户涉及资质与放款，如需变更请联系运营客服并重新提交认证。
+            提示：实名信息涉及资质审核，如需变更请联系运营客服并重新提交认证。
           </Text>
         </Form>
       </Modal>
