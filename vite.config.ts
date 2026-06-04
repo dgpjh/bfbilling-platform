@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // GitHub Pages 部署在 https://dgpjh.github.io/bfbilling-platform/ 子路径下
+  // 必须把 base 设为仓库名，否则打包出的 /assets/... 会 404 → 白屏
+  base: '/bfbilling-platform/',
   plugins: [react()],
   server: {
     host: '0.0.0.0',
