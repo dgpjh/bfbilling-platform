@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Form, Input, Button, Card, Tabs, Checkbox, Typography, Space, message } from 'antd';
-import { LockOutlined, ReloadOutlined, CheckCircleFilled, QqOutlined } from '@ant-design/icons';
+import {
+  Form, Input, Button, Card, Tabs, Checkbox, Typography, Space, message,
+  Alert, Steps, Radio, Cascader, Divider, Row, Col,
+} from 'antd';
+import {
+  LockOutlined, ReloadOutlined, CheckCircleFilled, QqOutlined, CustomerServiceOutlined,
+  SafetyCertificateOutlined, ScanOutlined, UserOutlined, EnvironmentOutlined,
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import brandLogo from '../../assets/brand-logo.png';
+import { provinceCityOptions } from '../../mock/data';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -16,13 +23,19 @@ const QQ_BLUE_DEEP = '#0A8DD0';
  *  · QQ 扫码登录（4 状态机：等待扫码 → 已扫码待确认 → 登录成功 → 二维码过期）
  *
  *  Demo 中没有真实 QQ 互联接入，扫码流程通过定时器模拟：
- *    挂载后 5 秒进入「已扫码」，再 2 秒「确认登录」自动跳转 dashboard；60 秒不操作则二维码过期。
+ *    挂载后 5 秒进入「已扫码」，再 2 秒「确认登录」切到完善资质 Tab；60 秒不操作则二维码过期。
  *  右侧二维码用 SVG 自绘（伪二维码点阵 + 中间企鹅头像），不引第三方包。
  */
 export default function AgentLogin() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('qrcode');
+  const showContact = () => message.info('联系客服：请联系对应区域经理，或添加客服 QQ 8008208820（Demo）');
   const onLogin = () => {
-    message.success('登录成功');
+    message.success('QQ 登录成功，请继续完善代理资质');
+    setActiveTab('qualification');
+  };
+  const onPasswordLogin = () => {
+    message.success('登录成功，代理资质认证已通过');
     navigate('/agent/dashboard');
   };
 
@@ -68,7 +81,7 @@ export default function AgentLogin() {
             />
           </div>
           <Paragraph style={{ color: 'rgba(255,255,255,0.75)', fontSize: 20, maxWidth: 460, marginBottom: 8 }}>
-            终端规模 / 活跃 / 流水<br />
+            代理录入 / 铺设跟进 / 规模数据<br />
             一站式总览
           </Paragraph>
           <Space size="large" style={{ marginTop: 32 }}>
@@ -124,27 +137,38 @@ export default function AgentLogin() {
             </Title>
           </Space>
           <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, marginBottom: 16, marginTop: -16 }}>
-            使用 QQ 账号一键登录手助网吧加盟平台
+            使用 QQ 账号一键登录代理结算管理平台
           </div>
           <Tabs
-            defaultActiveKey="qrcode"
+            activeKey={activeTab}
+            onChange={setActiveTab}
             items={[
               {
                 key: 'qrcode',
                 label: '扫码登录',
-                children: <QQQrcodePane onLogin={onLogin} />,
+                children: <QQQrcodePane onLogin={onLogin} navigate={navigate} />,
               },
               {
                 key: 'password',
-                label: 'QQ 号登录',
-                children: <QQPasswordPane onLogin={onLogin} navigate={navigate} />,
+                label: '密码登录',
+                children: <QQPasswordPane onLogin={onPasswordLogin} showContact={showContact} />,
+              },
+              {
+                key: 'qualification',
+                label: '完善资质',
+                children: <QualificationPane navigate={navigate} showContact={showContact} />,
               },
             ]}
           />
           <div style={{ textAlign: 'center', marginTop: 8, paddingTop: 12, borderTop: '1px dashed rgba(255,255,255,0.12)' }}>
-            <a style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }} onClick={() => navigate('/admin/audit')}>
-              🔐 平台审核员入口（迪越 / 应用宝手助 内部）
-            </a>
+            <Space split={<span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>} size={8}>
+              <a style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }} onClick={showContact}>
+                <CustomerServiceOutlined /> 联系客服
+              </a>
+              <a style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }} onClick={() => navigate('/admin/audit')}>
+                🔐 平台审核员入口
+              </a>
+            </Space>
           </div>
         </Card>
       </div>
@@ -153,7 +177,7 @@ export default function AgentLogin() {
 }
 
 /* ============================== QQ 号 + 密码登录 ============================== */
-function QQPasswordPane({ onLogin, navigate }: { onLogin: () => void; navigate: (path: string) => void }) {
+function QQPasswordPane({ onLogin, showContact }: { onLogin: () => void; showContact: () => void }) {
   return (
     <Form layout="vertical" onFinish={onLogin} requiredMark={false}>
       <Form.Item
@@ -200,28 +224,162 @@ function QQPasswordPane({ onLogin, navigate }: { onLogin: () => void; navigate: 
           block
           style={{ background: QQ_BLUE, borderColor: QQ_BLUE, fontWeight: 600, height: 44 }}
         >
-          安全登录
+登录（模拟资质已认证）
         </Button>
       </Form.Item>
 
       <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>
-        没有 QQ 号？
-        <a style={{ color: QQ_BLUE, marginLeft: 4 }} onClick={() => message.info('请前往 QQ 注册中心')}>
-          注册账号
-        </a>
-        <span style={{ margin: '0 8px' }}>·</span>
-        <a style={{ color: QQ_BLUE }} onClick={() => navigate('/register')}>
-          完善代理 / 网吧主资料
-        </a>
+        <Space split={<span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>} size={8}>
+          <a style={{ color: QQ_BLUE }} onClick={() => message.info('请前往 QQ 注册中心注册 QQ 号（Demo）')}>注册账号</a>
+          <a style={{ color: QQ_BLUE }} onClick={() => message.info('意见反馈已记录（Demo）')}>意见反馈</a>
+          <a style={{ color: QQ_BLUE }} onClick={showContact}>联系客服</a>
+        </Space>
       </div>
     </Form>
+  );
+}
+
+/* ============================== 未完善资质流程 Demo ============================== */
+function QualificationPane({ navigate, showContact }: { navigate: (path: string) => void; showContact: () => void }) {
+  const [form] = Form.useForm();
+  const [subject, setSubject] = useState<'personal' | 'company'>('company');
+  const [faceVerified, setFaceVerified] = useState(false);
+
+  const mockFace = () => {
+    setFaceVerified(true);
+    form.setFieldsValue({ realName: '王小明', idCard: '4403**********1234' });
+    message.success('人脸校验通过，已回填实名信息（Demo）');
+  };
+
+  const onSubmit = () => {
+    message.success('代理资质已提交审核，可先进入控制台录入网吧');
+    navigate('/agent/dashboard?from=register');
+  };
+
+  return (
+    <div style={{ paddingTop: 4 }}>
+      <Alert
+        type="warning"
+        showIcon
+        style={{ marginBottom: 12 }}
+        message="当前 QQ 已登录，但代理资质未完善"
+        description="请补充主体类型、营业执照/实名信息、联系方式后提交审核。"
+      />
+      <Steps
+        size="small"
+        current={subject === 'company' || faceVerified ? 2 : 1}
+        style={{ marginBottom: 16 }}
+        items={[
+          { title: 'QQ 登录' },
+          { title: '主体' },
+          { title: subject === 'company' ? '执照' : '实名' },
+          { title: '提交' },
+        ]}
+      />
+      <Form form={form} layout="vertical" requiredMark onFinish={onSubmit}>
+        <Row gutter={12}>
+          <Col span={12}>
+            <Form.Item label="QQ 号" name="qq" initialValue="2727994919">
+              <Input readOnly style={{ background: '#1A1212', color: 'rgba(255,255,255,0.65)', borderColor: '#2A1A1C' }} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="账号状态">
+              <Input value="已登录，待完善资质" readOnly style={{ background: '#1A1212', color: 'rgba(255,255,255,0.65)', borderColor: '#2A1A1C' }} />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Form.Item label="主体性质" name="subject" initialValue="company">
+          <Radio.Group value={subject} onChange={(e) => setSubject(e.target.value)}>
+            <Radio value="company">企业（上传营业执照认证）</Radio>
+            <Radio value="personal">个人（人脸识别认证）</Radio>
+          </Radio.Group>
+        </Form.Item>
+
+        {subject === 'company' ? (
+          <>
+            <Row gutter={12}>
+              <Col span={12}>
+                <Form.Item label="企业名称" name="companyName" rules={[{ required: true, message: '请输入企业名称' }]}>
+                  <Input placeholder="请输入营业执照全称" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="统一社会信用代码" name="creditCode" rules={[{ required: true, message: '请输入统一社会信用代码' }]}>
+                  <Input placeholder="18 位信用代码" />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Form.Item
+              label="营业执照上传"
+              name="license"
+              rules={[{ required: true, message: '请上传营业执照' }]}
+              extra="Demo 点击按钮仅展示交互；正式环境上传图片/扫描件。"
+            >
+              <Button icon={<SafetyCertificateOutlined />}>点击上传营业执照</Button>
+            </Form.Item>
+          </>
+        ) : (
+          <Row gutter={12}>
+            <Col span={10}>
+              <div style={{ color: 'rgba(255,255,255,0.75)', marginBottom: 8 }}>人脸校验</div>
+              <div
+                onClick={mockFace}
+                style={{ cursor: 'pointer', border: '1px dashed #2A1A1C', borderRadius: 8, padding: 16, textAlign: 'center', background: faceVerified ? 'rgba(82,196,26,0.08)' : '#150C0E' }}
+              >
+                {faceVerified ? <CheckCircleFilled style={{ fontSize: 30, color: '#52C41A' }} /> : <ScanOutlined style={{ fontSize: 30, color: '#FF2E3E' }} />}
+                <div style={{ color: faceVerified ? '#52C41A' : 'rgba(255,255,255,0.65)', marginTop: 8 }}>{faceVerified ? '已通过身份校验' : '点击模拟人脸校验'}</div>
+              </div>
+            </Col>
+            <Col span={14}>
+              <Form.Item label="姓名" name="realName">
+                <Input readOnly placeholder="等待人脸校验拉取..." style={{ background: '#1A1212', color: 'rgba(255,255,255,0.65)', borderColor: '#2A1A1C' }} />
+              </Form.Item>
+              <Form.Item label="身份证" name="idCard">
+                <Input readOnly placeholder="等待人脸校验拉取..." style={{ background: '#1A1212', color: 'rgba(255,255,255,0.65)', borderColor: '#2A1A1C' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+        )}
+
+        <Divider style={{ borderColor: '#2A1A1C', margin: '12px 0' }} />
+
+        <Form.Item label="联系人" name="contact" rules={[{ required: true, message: '请输入联系人' }]}>
+          <Input prefix={<UserOutlined />} placeholder="请输入联系人" />
+        </Form.Item>
+        <Form.Item label="手机号码" name="phone" rules={[{ required: true, message: '请输入手机号' }]}>
+          <Input placeholder="请输入手机号码" />
+        </Form.Item>
+        <Form.Item label="邮箱地址" name="email" rules={[{ required: true, type: 'email', message: '请输入正确邮箱' }]}>
+          <Input placeholder="请输入邮箱地址" />
+        </Form.Item>
+        <Form.Item label="联系地址" required>
+          <Form.Item name="region" rules={[{ required: true, message: '请选择省份城市' }]}>
+            <Cascader options={provinceCityOptions} placeholder="请选择省份城市" />
+          </Form.Item>
+          <Form.Item name="address" style={{ marginBottom: 0 }} rules={[{ required: true, message: '请填写详细地址' }]}>
+            <Input prefix={<EnvironmentOutlined />} placeholder="请输入详细地址" />
+          </Form.Item>
+        </Form.Item>
+
+        <Form.Item name="agreeProtocol" valuePropName="checked" rules={[{ validator: (_, v) => v ? Promise.resolve() : Promise.reject(new Error('请同意合作协议')) }]}>
+          <Checkbox style={{ color: 'rgba(255,255,255,0.75)' }}>同意《手助网吧加盟合作协议》</Checkbox>
+        </Form.Item>
+
+        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+          <Button type="link" icon={<CustomerServiceOutlined />} onClick={showContact}>联系客服</Button>
+          <Button type="primary" htmlType="submit">提交代理资质审核</Button>
+        </Space>
+      </Form>
+    </div>
   );
 }
 
 /* ============================== QQ 扫码登录 ============================== */
 type QrStatus = 'waiting' | 'scanned' | 'confirmed' | 'expired';
 
-function QQQrcodePane({ onLogin }: { onLogin: () => void }) {
+function QQQrcodePane({ onLogin, navigate }: { onLogin: () => void; navigate: (path: string) => void }) {
   const [status, setStatus] = useState<QrStatus>('waiting');
   // 二维码 token，刷新时变化导致 SVG 重绘
   const [token, setToken] = useState(() => Math.random().toString(36).slice(2, 10));
@@ -315,12 +473,14 @@ function QQQrcodePane({ onLogin }: { onLogin: () => void }) {
         </Text>
       </div>
       <div style={{ textAlign: 'center', marginTop: 6 }}>
-        <a
-          style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}
-          onClick={refresh}
-        >
-          <ReloadOutlined /> 刷新二维码
-        </a>
+        <Space split={<span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>} size={8}>
+          <a style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }} onClick={refresh}>
+            <ReloadOutlined /> 刷新二维码
+          </a>
+          <a style={{ color: QQ_BLUE, fontSize: 12 }} onClick={() => message.info('请前往 QQ 注册中心注册 QQ 号（Demo）')}>注册账号</a>
+          <a style={{ color: QQ_BLUE, fontSize: 12 }} onClick={() => message.info('意见反馈已记录（Demo）')}>意见反馈</a>
+          <a style={{ color: QQ_BLUE, fontSize: 12 }} onClick={() => message.info('联系客服：请联系对应区域经理，或添加客服 QQ 8008208820（Demo）')}>联系客服</a>
+        </Space>
       </div>
     </div>
   );

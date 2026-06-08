@@ -19,7 +19,7 @@ export default function App() {
       {/* 兼容旧入口 */}
       <Route path="/agent/login" element={<Navigate to="/" replace />} />
 
-      {/* 控制台（同一布局，按身份切换视角） */}
+      {/* 代理控制台（单角色版） */}
       <Route path="/agent" element={<AgentLayout />}>
         <Route index element={<Navigate to="/agent/dashboard" replace />} />
         <Route path="dashboard" element={<AgentDashboard />} />

@@ -7,20 +7,22 @@ export type CafeFormModalProps = {
   onSuccess?: () => void;
 };
 
-// 网吧录入弹窗：网吧主提交录入申请。
+// 网吧录入弹窗：代理提交网吧录入申请。
 // ⚠️ 提交后默认进入「平台审核中」状态，由迪越/应用宝手助审核员通过后才会分配正式网吧 ID（MCxxxx）。
-//    审核通过前：无 ID、不能被代理关联；审核通过后即可在「我的网吧」页看到 ID 并分享给代理。
+//    审核通过后，代理即可安排线下铺设霸服系统。
 export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModalProps) {
   const [form] = Form.useForm();
 
   const onOk = async () => {
     const v = await form.validateFields();
     const cafe = addMyCafe({
+      externalCafeId: v.externalCafeId,
       name: v.name,
       province: v.region[0],
       city: v.region[1],
       address: v.address,
-      declaredTerminalCount: v.declaredTerminalCount,
+      declaredTerminalCount: v.terminalScaleCount,
+      terminalScaleCount: v.terminalScaleCount,
       contact: v.contact,
       phone: v.phone,
     });
@@ -43,10 +45,19 @@ export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModa
     >
       <Alert
         type="info" showIcon style={{ marginBottom: 16 }}
-        message="录入后需经平台审核 → 分配正式网吧 ID"
-        description="提交后由迪越 / 应用宝手助审核团队人工审核（一般 1 个工作日内）。审核通过后才会分配 MCxxxx 网吧 ID，届时可分享给代理发起关联。"
+        message="录入后需经平台审核 → 代理铺设上线"
+        description="网吧 ID 由代理提前向迪越侧或区域经理获取。提交后由迪越 / 应用宝手助审核团队人工审核（一般 1 个工作日内），审核通过后即可安排线下铺设霸服系统。"
       />
       <Form form={form} layout="vertical" requiredMark style={{ marginTop: 4 }}>
+        <Form.Item
+          label="网吧 ID"
+          name="externalCafeId"
+          rules={[{ required: true, message: '请输入网吧 ID' }]}
+          extra="必填。若不知道网吧 ID，可以联系相应区域经理获取。"
+        >
+          <Input placeholder="如：BAFU-SZ-0001" />
+        </Form.Item>
+
         <Form.Item label="网吧名称" name="name" rules={[{ required: true, message: '请输入网吧名称' }]}>
           <Input placeholder="如：星辰电竞·南山旗舰店" />
         </Form.Item>
@@ -62,10 +73,10 @@ export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModa
         <Row gutter={16}>
           <Col span={8}>
             <Form.Item
-              label="预计终端数（台）"
-              name="declaredTerminalCount"
-              rules={[{ required: true, message: '请输入预计终端数' }]}
-              extra="实际数量以铺设上线后为准"
+              label="终端规模数（台）"
+              name="terminalScaleCount"
+              rules={[{ required: true, message: '请输入终端规模数' }]}
+              extra="代理人工录入，可后续编辑；已活跃终端数由上线后数据回传"
             >
               <InputNumber min={1} max={5000} style={{ width: '100%' }} placeholder="如 100" />
             </Form.Item>

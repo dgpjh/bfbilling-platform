@@ -5,11 +5,11 @@ import {
 } from 'antd';
 import {
   ScanOutlined, SafetyCertificateOutlined,
-  UserOutlined, EnvironmentOutlined, CheckCircleFilled,
+  UserOutlined, EnvironmentOutlined, CheckCircleFilled, CustomerServiceOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import {
-  registerRoleOptions, provinceCityOptions, type RegisterRole,
+  registerRoleOptions, provinceCityOptions,
 } from '../mock/data';
 
 const { Title, Paragraph, Text } = Typography;
@@ -50,17 +50,14 @@ function CodeButton({ label }: { label: string }) {
 export default function Register() {
   const navigate = useNavigate();
   const [form] = Form.useForm();
-  const [role, setRole] = useState<RegisterRole>('agent');
   const [subject, setSubject] = useState<'personal' | 'company'>('personal');
   const [faceVerified, setFaceVerified] = useState(false);
 
+  const showContact = () => message.info('联系客服：请联系对应区域经理，或添加客服 QQ 8008208820（Demo）');
+
   const onSubmit = () => {
-    message.success('注册提交成功！资质审核中，可先进入控制台录入网吧');
-    if (role === 'agent') navigate('/agent/dashboard?from=register');
-    else {
-      sessionStorage.setItem('demo_role', 'owner');
-      navigate('/agent/dashboard?from=register');
-    }
+    message.success('资质提交成功！审核中，可先进入代理控制台录入网吧');
+    navigate('/agent/dashboard?from=register');
   };
 
   const mockFace = () => {
@@ -76,38 +73,59 @@ export default function Register() {
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <Space align="center" style={{ marginBottom: 8 }}>
             <span className="brand-block" style={{ width: 40, height: 40, fontSize: 20 }}>霸</span>
-            <Title level={2} style={{ color: '#fff', margin: 0 }}>加盟入驻注册</Title>
+            <Title level={2} style={{ color: '#fff', margin: 0 }}>完善代理资质</Title>
           </Space>
           <Paragraph style={{ color: 'rgba(255,255,255,0.55)' }}>
-            复用应用宝开发者认证能力 · 实名 / 联系方式 一站式登记
+现有 QQ 号登录 · 企业/个人主体认证 · 营业执照/实名/联系方式一站式登记
           </Paragraph>
+          <Button size="small" type="link" icon={<CustomerServiceOutlined />} onClick={showContact}>
+            联系客服
+          </Button>
         </div>
 
         <Card style={{ background: '#1A1212', border: '1px solid #2A1A1C' }}>
           <Steps
             size="small"
-            current={faceVerified ? 1 : 0}
+            current={faceVerified ? 2 : 1}
             style={{ marginBottom: 28 }}
             items={[
+              { title: 'QQ 创号' },
               { title: '选择主体' },
-              { title: '实名认证' },
+              { title: subject === 'company' ? '上传执照' : '实名认证' },
               { title: '联系方式' },
               { title: '提交审核' },
             ]}
           />
 
           <Form form={form} layout="vertical" requiredMark onFinish={onSubmit}>
+            <Title level={5} style={{ color: '#FF5562' }}>① QQ 登录账号</Title>
+            <Alert
+              type="success" showIcon style={{ marginBottom: 16 }}
+              message="QQ 账号已创建 / 已授权"
+              description="Demo 中默认使用 QQ 号 123456789 作为登录账号。正式流程中，代理先完成 QQ 注册或授权登录，再继续完善代理主体资质。"
+            />
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item label="QQ 号" name="qq" initialValue="123456789">
+                  <Input readOnly style={{ background: '#1A1212', color: 'rgba(255,255,255,0.65)', borderColor: '#2A1A1C' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="账号状态">
+                  <Input value="已登录，待完善代理资质" readOnly style={{ background: '#1A1212', color: 'rgba(255,255,255,0.65)', borderColor: '#2A1A1C' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Divider style={{ borderColor: '#2A1A1C' }} />
+
             {/* ============ 区块 0：入驻角色 + 主体类型 ============ */}
-            <Title level={5} style={{ color: '#FF5562' }}>① 入驻角色</Title>
+            <Title level={5} style={{ color: '#FF5562' }}>② 入驻角色与主体类型</Title>
             <Form.Item name="role" initialValue="agent">
-              <Radio.Group
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                style={{ width: '100%' }}
-              >
+              <Radio.Group value="agent" style={{ width: '100%' }}>
                 <Row gutter={12}>
                   {registerRoleOptions.map((opt) => (
-                    <Col span={12} key={opt.value}>
+                    <Col span={24} key={opt.value}>
                       <Radio.Button
                         value={opt.value}
                         style={{ width: '100%', height: 'auto', padding: 12, whiteSpace: 'normal', textAlign: 'left' }}
@@ -121,20 +139,11 @@ export default function Register() {
               </Radio.Group>
             </Form.Item>
 
-            {role === 'owner' && (
-              <Alert
-                type="info" showIcon style={{ marginBottom: 24 }}
-                message="网吧主无需在注册时关联代理"
-                description="创角完成后，请在「我的网吧」录入你经营的全部门店（一人可管理多家）。代理可主动通过「关联网吧」页对你的网吧发起申请，由你审批通过后才会建立归属关系；未关联的网吧默认为散店，分成由你直连迪越结算。"
-              />
-            )}
-            {role === 'agent' && (
-              <Alert
-                type="info" showIcon style={{ marginBottom: 24 }}
-                message="代理无需在注册时关联网吧"
-                description="创角完成后，请在「关联网吧」页输入网吧主提供的网吧 ID 发起关联申请。网吧主审批通过后，相应网吧将出现在你的「我托管的网吧」列表中并参与结算分润。"
-              />
-            )}
+            <Alert
+              type="info" showIcon style={{ marginBottom: 24 }}
+              message="当前版本仅保留代理角色"
+              description="代理完成资质提交后，可直接录入网吧信息、跟进平台审核、线下铺设霸服系统，并查看终端规模、活跃与流水数据；不再创建网吧主账号，也不再给网吧主分成。"
+            />
 
             <Form.Item label="主体性质" name="subject" initialValue="personal">
               <Radio.Group value={subject} onChange={(e) => setSubject(e.target.value)}>
@@ -146,7 +155,7 @@ export default function Register() {
             <Divider style={{ borderColor: '#2A1A1C' }} />
 
             {/* ============ 区块 1：实名认证（复用 YYB 人脸校验）============ */}
-            <Title level={5} style={{ color: '#FF5562' }}>② 实名认证</Title>
+            <Title level={5} style={{ color: '#FF5562' }}>③ {subject === 'company' ? '企业资质与营业执照' : '个人实名认证'}</Title>
             {subject === 'personal' ? (
               <Row gutter={24}>
                 <Col span={10}>
@@ -195,7 +204,12 @@ export default function Register() {
                   </Form.Item>
                 </Col>
                 <Col span={24}>
-                  <Form.Item label="营业执照上传" name="license">
+                  <Form.Item
+                    label="营业执照上传"
+                    name="license"
+                    extra="正式环境需上传营业执照照片/扫描件；Demo 点击按钮仅展示交互，不真实上传文件。"
+                    rules={[{ required: true, message: '请上传营业执照' }]}
+                  >
                     <Button icon={<SafetyCertificateOutlined />}>点击上传营业执照（Demo 展示）</Button>
                   </Form.Item>
                 </Col>
@@ -205,7 +219,7 @@ export default function Register() {
             <Divider style={{ borderColor: '#2A1A1C' }} />
 
             {/* ============ 区块 2：联系方式 ============ */}
-            <Title level={5} style={{ color: '#FF5562' }}>③ 联系方式</Title>
+            <Title level={5} style={{ color: '#FF5562' }}>④ 联系方式</Title>
             <Form.Item label="联系人" name="contact" rules={[{ required: true, message: '请填写真实姓名' }]} extra="请填写真实姓名，虚假信息将影响资质审核">
               <Input prefix={<UserOutlined />} placeholder="请输入联系人" />
             </Form.Item>
@@ -259,7 +273,7 @@ export default function Register() {
               <Space>
                 <Button onClick={() => navigate('/')}>返回</Button>
                 <Button type="primary" htmlType="submit" size="large" style={{ paddingInline: 40 }}>
-                  提交注册
+                  提交代理资质审核
                 </Button>
               </Space>
             </div>
