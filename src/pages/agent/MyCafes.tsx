@@ -219,7 +219,6 @@ export default function MyCafes() {
       <Alert
         type="info" showIcon style={{ marginBottom: 16 }}
         message="代理主链路：获取网吧 ID → 录入网吧 → 平台审核 → 代理铺设霸服上线 → 数据回传展示"
-        description="当前版本取消网吧主账号和网吧主分成，网吧信息、现场联系人、铺设进度均由代理维护。"
       />
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
