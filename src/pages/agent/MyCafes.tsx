@@ -390,13 +390,6 @@ export default function MyCafes() {
         width={1080}
         destroyOnClose
       >
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 12 }}
-          message="按日展示已结算流水（近 60 天，时间倒序）"
-          description="默认展示当前代理名下全部已上线网吧；可通过下拉框筛选某几家网吧。仅展示已结算流水，不含本月预估口径。"
-        />
         <Space style={{ marginBottom: 12, width: '100%' }} wrap>
           <span style={{ color: 'rgba(0,0,0,0.65)' }}>网吧筛选：</span>
           <Select
@@ -479,9 +472,6 @@ export default function MyCafes() {
                 },
                 { title: '日活终端', dataIndex: 'dailyActiveTerminal', width: 110, align: 'right' as const,
                   render: (v: number) => `${v} 台`,
-                },
-                { title: '状态', dataIndex: 'status', width: 100,
-                  render: () => <Tag color="success">实际已结算</Tag>,
                 },
               ]}
             />
