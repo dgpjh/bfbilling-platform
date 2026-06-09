@@ -1,14 +1,13 @@
-import { Layout, Menu, Avatar, Dropdown, Badge, Space, Tag, Button, message } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, Space, Tag, Button, message } from 'antd';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   DashboardOutlined,
   ShopOutlined,
-  BellOutlined,
   UserOutlined,
   LogoutOutlined,
   CustomerServiceOutlined,
 } from '@ant-design/icons';
-import { unreadMessages, agentInfo } from '../mock/data';
+import { agentInfo } from '../mock/data';
 import brandLogo from '../assets/brand-logo.png';
 
 const { Header, Sider, Content } = Layout;
@@ -76,9 +75,6 @@ export default function AgentLayout() {
             <Button size="small" ghost icon={<CustomerServiceOutlined />} onClick={showContact}>
               联系客服
             </Button>
-            <Badge count={unreadMessages} size="small">
-              <BellOutlined style={{ fontSize: 18, cursor: 'pointer', color: 'rgba(255,255,255,0.85)' }} />
-            </Badge>
             <Dropdown
               menu={{
                 items: [

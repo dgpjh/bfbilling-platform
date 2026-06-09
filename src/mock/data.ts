@@ -13,7 +13,7 @@ export const currentRole: UserRole = 'agent';
 export const agentInfo = {
   role: 'agent' as UserRole,
   name: '星辰文化传媒（代理）',
-  contact: '李代理',
+  contact: '李建国',
   province: '广东',
   startDate: '2026-01-01',
 };
@@ -75,7 +75,7 @@ export type MyCafe = {
 };
 
 export const CURRENT_AGENT_ID = 'A2001';
-export const CURRENT_AGENT_NAME = '李代理';
+export const CURRENT_AGENT_NAME = '李建国';
 
 const _myCafes: MyCafe[] = [
   {
