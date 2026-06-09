@@ -3,10 +3,11 @@
 // 代理直接录入网吧、查看平台审核状态、执行铺设上线、删除门店。
 // ===========================================================================
 import { useMemo, useState } from 'react';
+import dayjs, { type Dayjs } from 'dayjs';
 import {
   Table, Button, Card, Tag, Space, Row, Col, Empty, Alert, Badge, List,
   Modal, Input, InputNumber, Typography, message, Descriptions, Statistic, Progress,
-  Tooltip, Form, Select,
+  Tooltip, Form, Select, DatePicker,
 } from 'antd';
 import {
   PlusOutlined, ShopOutlined, DeleteOutlined, ExclamationCircleFilled,
@@ -46,6 +47,11 @@ export default function MyCafes() {
   const [editForm] = Form.useForm();
   const [revenueQueryOpen, setRevenueQueryOpen] = useState(false);
   const [selectedCafeIds, setSelectedCafeIds] = useState<string[]>([]);
+  // 历史流水时间范围（与 mock 业务时点对齐：默认近 30 天，锚点 2026-06-08）
+  const MOCK_TODAY = dayjs('2026-06-08');
+  const [revenueDateRange, setRevenueDateRange] = useState<[Dayjs, Dayjs]>(
+    [MOCK_TODAY.subtract(29, 'day'), MOCK_TODAY],
+  );
   const [deleteModal, setDeleteModal] = useState<MyCafe | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const cafes = getCafesByAgent(CURRENT_AGENT_ID);
@@ -65,11 +71,17 @@ export default function MyCafes() {
   // 历史流水查询：按筛选过滤后的记录（默认全部）
   const revenueQueryRecords = useMemo(() => {
     if (!revenueQueryOpen) return [];
-    const all = getAgentDailyRevenueRecords(CURRENT_AGENT_ID, 60);
-    if (selectedCafeIds.length === 0) return all;
-    const set = new Set(selectedCafeIds);
-    return all.filter((r) => set.has(r.cafeId));
-  }, [revenueQueryOpen, selectedCafeIds, tick]);
+    const all = getAgentDailyRevenueRecords(CURRENT_AGENT_ID, 90);
+    const [from, to] = revenueDateRange;
+    const fromStr = from.format('YYYY-MM-DD');
+    const toStr = to.format('YYYY-MM-DD');
+    const set = selectedCafeIds.length > 0 ? new Set(selectedCafeIds) : null;
+    return all.filter((r) => {
+      if (r.date < fromStr || r.date > toStr) return false;
+      if (set && !set.has(r.cafeId)) return false;
+      return true;
+    });
+  }, [revenueQueryOpen, selectedCafeIds, revenueDateRange, tick]);
   // 汇总统计
   const revenueQuerySummary = useMemo(() => {
     const recordCount = revenueQueryRecords.length;
@@ -397,7 +409,7 @@ export default function MyCafes() {
             allowClear
             showSearch
             placeholder="不选 = 全部网吧（支持名称 / 网吧 ID 模糊搜索）"
-            style={{ minWidth: 480 }}
+            style={{ minWidth: 360 }}
             value={selectedCafeIds}
             onChange={setSelectedCafeIds}
             optionFilterProp="label"
@@ -407,8 +419,27 @@ export default function MyCafes() {
               label: `${c.name}（${c.externalCafeId}）`,
             }))}
           />
-          {selectedCafeIds.length > 0 && (
-            <Button size="small" onClick={() => setSelectedCafeIds([])}>清空筛选</Button>
+          <span style={{ color: 'rgba(0,0,0,0.65)', marginLeft: 8 }}>时间范围：</span>
+          <DatePicker.RangePicker
+            value={revenueDateRange}
+            onChange={(v) => {
+              if (v && v[0] && v[1]) setRevenueDateRange([v[0], v[1]]);
+            }}
+            allowClear={false}
+            disabledDate={(d) => d && (d.isAfter(MOCK_TODAY, 'day') || d.isBefore(MOCK_TODAY.subtract(89, 'day'), 'day'))}
+            presets={[
+              { label: '近 7 天', value: [MOCK_TODAY.subtract(6, 'day'), MOCK_TODAY] },
+              { label: '近 14 天', value: [MOCK_TODAY.subtract(13, 'day'), MOCK_TODAY] },
+              { label: '近 30 天', value: [MOCK_TODAY.subtract(29, 'day'), MOCK_TODAY] },
+              { label: '近 60 天', value: [MOCK_TODAY.subtract(59, 'day'), MOCK_TODAY] },
+              { label: '近 90 天', value: [MOCK_TODAY.subtract(89, 'day'), MOCK_TODAY] },
+            ]}
+          />
+          {(selectedCafeIds.length > 0 || !revenueDateRange[1].isSame(MOCK_TODAY, 'day') || !revenueDateRange[0].isSame(MOCK_TODAY.subtract(29, 'day'), 'day')) && (
+            <Button size="small" onClick={() => {
+              setSelectedCafeIds([]);
+              setRevenueDateRange([MOCK_TODAY.subtract(29, 'day'), MOCK_TODAY]);
+            }}>重置筛选</Button>
           )}
         </Space>
 
@@ -417,20 +448,12 @@ export default function MyCafes() {
         ) : (
           <>
             <Row gutter={12} style={{ marginBottom: 12 }}>
-              <Col span={6}>
-                <Card size="small">
-                  <Statistic title="筛选范围" value={selectedCafeIds.length === 0 ? launchedCafes.length : selectedCafeIds.length} suffix={`/ ${launchedCafes.length} 家`} />
-                </Card>
-              </Col>
-              <Col span={6}>
-                <Card size="small"><Statistic title="记录条数" value={revenueQuerySummary.recordCount} suffix="条" /></Card>
-              </Col>
-              <Col span={6}>
+              <Col span={12}>
                 <Card size="small">
                   <Statistic title="累计流水" value={revenueQuerySummary.totalRevenue} prefix="¥" groupSeparator="," />
                 </Card>
               </Col>
-              <Col span={6}>
+              <Col span={12}>
                 <Card size="small">
                   <Statistic title="日均流水" value={revenueQuerySummary.dailyAvg} prefix="¥" groupSeparator="," />
                 </Card>
