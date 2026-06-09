@@ -12,7 +12,7 @@ import {
   PlusOutlined, ShopOutlined, DeleteOutlined, ExclamationCircleFilled,
   DesktopOutlined, RiseOutlined, ThunderboltOutlined, WarningFilled,
   HourglassOutlined, CheckCircleOutlined, CloseCircleOutlined,
-  BarChartOutlined,
+  BarChartOutlined, FileExcelOutlined,
 } from '@ant-design/icons';
 import {
   getCafesByAgent,
@@ -360,7 +360,30 @@ export default function MyCafes() {
       <CafeFormModal open={cafeFormOpen} onClose={() => setCafeFormOpen(false)} onSuccess={refresh} />
 
       <Modal
-        title={<Space><BarChartOutlined /> <span>历史流水查询</span></Space>}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 36 }}>
+            <Space><BarChartOutlined /> <span>历史流水查询</span></Space>
+            <Button
+              type="primary"
+              ghost
+              size="small"
+              icon={<FileExcelOutlined />}
+              disabled={revenueQueryRecords.length === 0}
+              onClick={() => {
+                const scope = selectedCafeIds.length === 0
+                  ? `全部 ${launchedCafes.length} 家网吧`
+                  : `${selectedCafeIds.length} 家网吧`;
+                const hide = message.loading(`正在导出（${scope} · ${revenueQueryRecords.length} 条记录）...`, 0);
+                setTimeout(() => {
+                  hide();
+                  message.success(`Excel 文件已生成（Demo 演示，未实际下载）`);
+                }, 1200);
+              }}
+            >
+              导出 Excel
+            </Button>
+          </div>
+        }
         open={revenueQueryOpen}
         onCancel={() => setRevenueQueryOpen(false)}
         footer={null}
