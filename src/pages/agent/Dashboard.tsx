@@ -90,7 +90,7 @@ export default function Dashboard() {
         <Alert
           type="info" showIcon icon={<HourglassOutlined />} style={{ marginBottom: 16 }}
           message={`你有 ${summary.pendingAuditCount} 家网吧正在等待平台审核`}
-          description="审核通过后即可安排线下铺设霸服系统；网吧 ID 由代理提前向迪越侧或区域经理获取。"
+          description="审核通过后即可安排线下铺设霸服系统；网吧 ID 由代理提前向平台或区域经理获取。"
           action={<Button size="small" onClick={() => navigate('/agent/my-cafes')}>查看 <ArrowRightOutlined /></Button>}
         />
       )}

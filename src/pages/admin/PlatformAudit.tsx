@@ -1,5 +1,5 @@
 // ===========================================================================
-// 平台管理端（迪越 / 应用宝手助 内部）
+// 平台管理端（平台内部审核员）
 // 平台视角 = 代理数据看板的上级汇总：总览 / 网吧明细 / 审核记录。
 // ===========================================================================
 import { useState } from 'react';
@@ -205,7 +205,7 @@ export default function PlatformAudit() {
           <Avatar style={{ background: '#FF2E3E' }} icon={<SafetyCertificateOutlined />} />
           <div>
             <div style={{ color: '#fff', fontSize: 16, fontWeight: 600 }}>平台管理端</div>
-            <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12 }}>迪越 / 应用宝手助 · 总览 / 网吧明细 / 审核记录</div>
+            <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12 }}>平台 · 总览 / 网吧明细 / 审核记录</div>
           </div>
         </Space>
         <Space>

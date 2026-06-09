@@ -27,7 +27,7 @@ export default function App() {
         <Route path="profile" element={<AgentProfile />} />
       </Route>
 
-      {/* 平台审核台（迪越 / 应用宝手助 内部审核员） */}
+      {/* 平台审核台（平台内部审核员） */}
       <Route path="/admin/audit" element={<PlatformAudit />} />
 
       {/* 已下线路由统一回到首页 */}

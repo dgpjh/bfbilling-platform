@@ -51,6 +51,10 @@ export default function MyCafes() {
   const monthlyActiveRate = summary.terminalCount > 0
     ? (summary.monthlyActiveTerminal / summary.terminalCount) * 100 : 0;
   const pendingLaunchCafes = getPendingLaunchCafesForAgent(CURRENT_AGENT_ID);
+  const pendingAuditCafes = useMemo(
+    () => cafes.filter((c) => c.platformAuditStatus === 'pending'),
+    [cafes, tick],
+  );
 
   const openEdit = (cafe: MyCafe) => {
     editForm.setFieldsValue({
@@ -219,23 +223,64 @@ export default function MyCafes() {
       />
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col xs={12} md={6}>
+        <Col xs={12} md={5}>
           <Card><Statistic title={<Space><ShopOutlined /> 已录入网吧</Space>} value={summary.cafeCount} suffix="家" /></Card>
         </Col>
-        <Col xs={12} md={6}>
+        <Col xs={12} md={5}>
           <Card><Statistic title={<Space><DesktopOutlined /> 终端规模</Space>} value={summary.terminalScaleCount} suffix="台" /></Card>
         </Col>
-        <Col xs={12} md={6}>
-          <Card style={{ borderLeft: '3px solid #FAAD14' }}>
-            <Statistic title="待审核 / 待铺设" value={`${summary.pendingAuditCount} / ${summary.pendingLaunchCount}`} valueStyle={{ color: '#FAAD14' }} />
+        <Col xs={12} md={4}>
+          <Card style={{ borderLeft: '3px solid #1677FF' }}>
+            <Statistic title={<Space><HourglassOutlined /> 待审核</Space>} value={summary.pendingAuditCount} suffix="家" valueStyle={{ color: '#1677FF' }} />
           </Card>
         </Col>
-        <Col xs={12} md={6}>
+        <Col xs={12} md={4}>
+          <Card style={{ borderLeft: '3px solid #FAAD14' }}>
+            <Statistic title={<Space><ThunderboltOutlined /> 待铺设</Space>} value={summary.pendingLaunchCount} suffix="家" valueStyle={{ color: '#FAAD14' }} />
+          </Card>
+        </Col>
+        <Col xs={24} md={6}>
           <Card>
             <Statistic title={<Space><RiseOutlined /> 本月流水</Space>} value={summary.monthRevenue} prefix="¥" groupSeparator="," />
           </Card>
         </Col>
       </Row>
+
+      {pendingAuditCafes.length > 0 && (
+        <Card
+          style={{ marginBottom: 16, borderLeft: '3px solid #1677FF' }}
+          title={<Space><Badge count={pendingAuditCafes.length} style={{ backgroundColor: '#1677FF' }} /><span style={{ fontSize: 16, fontWeight: 600 }}>⏳ 待审核网吧（平台审核中，一般 1 个工作日内）</span></Space>}
+        >
+          <List
+            dataSource={pendingAuditCafes}
+            renderItem={(c) => (
+              <List.Item
+                actions={[
+                  <Tag key="status" color="processing" icon={<HourglassOutlined />}>平台审核中</Tag>,
+                ]}
+              >
+                <List.Item.Meta
+                  title={
+                    <Space wrap>
+                      <Tag color="blue">{c.externalCafeId}</Tag>
+                      <Tag color="default">{c.tempId}（待审核）</Tag>
+                      <span>{c.name}</span>
+                      <Text type="secondary">· {c.province}·{c.city}</Text>
+                    </Space>
+                  }
+                  description={
+                    <Space wrap split="·" size={4}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>终端规模 {c.terminalScaleCount} 台</Text>
+                      <Text type="secondary" style={{ fontSize: 12 }}>联系人：{c.contact} {c.phone}</Text>
+                      <Text type="secondary" style={{ fontSize: 12 }}>地址：{c.address}</Text>
+                    </Space>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        </Card>
+      )}
 
       {pendingLaunchCafes.length > 0 && (
         <Card

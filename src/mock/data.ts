@@ -361,7 +361,7 @@ export const agentProfile: AccountProfile = {
   email: 'li****@xingchen.com',
   province: '广东',
   city: '深圳',
-  address: '南山区科技园南路 88 号迪越大厦 12 楼',
+  address: '南山区科技园南路 88 号加盟广场大厦 12 楼',
   authStatus: 'verified',
   registeredAt: '2026-01-01',
 };

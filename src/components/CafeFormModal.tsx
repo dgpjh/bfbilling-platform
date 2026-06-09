@@ -8,7 +8,7 @@ export type CafeFormModalProps = {
 };
 
 // 网吧录入弹窗：代理提交网吧录入申请。
-// ⚠️ 提交后默认进入「平台审核中」状态，由迪越/应用宝手助审核员通过后才会分配正式网吧 ID（MCxxxx）。
+// ⚠️ 提交后默认进入「平台审核中」状态，由平台审核员通过后才会分配正式网吧 ID（MCxxxx）。
 //    审核通过后，代理即可安排线下铺设霸服系统。
 export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModalProps) {
   const [form] = Form.useForm();
@@ -46,7 +46,7 @@ export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModa
       <Alert
         type="info" showIcon style={{ marginBottom: 16 }}
         message="录入后需经平台审核 → 代理铺设上线"
-        description="网吧 ID 由代理提前向迪越侧或区域经理获取。提交后由迪越 / 应用宝手助审核团队人工审核（一般 1 个工作日内），审核通过后即可安排线下铺设霸服系统。"
+        description="网吧 ID 由代理提前向平台或区域经理获取。提交后由平台审核团队人工审核（一般 1 个工作日内），审核通过后即可安排线下铺设霸服系统。"
       />
       <Form form={form} layout="vertical" requiredMark style={{ marginTop: 4 }}>
         <Form.Item
