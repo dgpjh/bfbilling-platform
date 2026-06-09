@@ -63,6 +63,7 @@ export type MyCafe = {
   monthRevenue: number;
   contact: string;
   phone: string;
+  cafePassword?: string;                 // 网吧密码（Demo 演示态：明文 mock；生产环境必须 hash 存储）
   status: 'pending' | 'normal';
   platformAuditStatus: 'pending' | 'approved' | 'rejected';
   platformAuditRemark?: string;
@@ -112,11 +113,11 @@ const _myCafes: MyCafe[] = [
     agentId: CURRENT_AGENT_ID, agentName: CURRENT_AGENT_NAME,
   },
   {
-    id: '', tempId: 'P-A8F2', externalCafeId: 'BAFU-SZ-0004', name: '星辰电竞·福田 COCO PARK 店',
+    id: 'MC0004', externalCafeId: 'BF20260601', name: '星辰电竞·福田 COCO PARK 店',
     province: '广东', city: '深圳', address: '福田区益田路 6028 号 4 楼',
     terminalScaleCount: 110, terminalCount: 0, monthlyActiveTerminal: 0, dailyActiveTerminal: 0, monthRevenue: 0,
     contact: '刘店长', phone: '135****2299',
-    status: 'pending', platformAuditStatus: 'pending',
+    status: 'normal', platformAuditStatus: 'approved', platformAuditAt: '2026-06-01',
     createdAt: '2026-06-01', declaredTerminalCount: 110,
     agentId: CURRENT_AGENT_ID, agentName: CURRENT_AGENT_NAME,
   },
@@ -152,7 +153,6 @@ export function getPendingLaunchCafesForAgent(agentId: string): MyCafe[] {
 }
 
 export function addMyCafe(input: {
-  externalCafeId: string;
   name: string;
   province: string;
   city: string;
@@ -161,15 +161,16 @@ export function addMyCafe(input: {
   terminalScaleCount: number;
   contact: string;
   phone: string;
+  cafePassword?: string;
   agentId?: string;
   agentName?: string;
 }): MyCafe {
-  _tempSeq += 1;
-  const tempId = `P-${Math.random().toString(36).slice(2, 6).toUpperCase()}${String(_tempSeq).padStart(2, '0')}`;
+  // 一期取消审核流程：录入即生效，自动生成业务 ID + 系统 ID
+  _cafeSeq += 1;
+  const externalCafeId = `BF${String(Math.floor(10000000 + Math.random() * 89999999))}`; // BF + 8 位
   const cafe: MyCafe = {
-    id: '',
-    tempId,
-    externalCafeId: input.externalCafeId,
+    id: `MC${String(_cafeSeq).padStart(4, '0')}`,
+    externalCafeId,
     name: input.name,
     province: input.province,
     city: input.city,
@@ -181,9 +182,12 @@ export function addMyCafe(input: {
     monthRevenue: 0,
     contact: input.contact,
     phone: input.phone,
+    cafePassword: input.cafePassword,
     declaredTerminalCount: input.declaredTerminalCount,
-    status: 'pending',
-    platformAuditStatus: 'pending',
+    status: 'normal',
+    platformAuditStatus: 'approved',
+    platformAuditAt: dayjs().format('YYYY-MM-DD'),
+    platformAuditRemark: '一期免审核，系统自动登记',
     createdAt: dayjs().format('YYYY-MM-DD'),
     agentId: input.agentId || CURRENT_AGENT_ID,
     agentName: input.agentName || CURRENT_AGENT_NAME,
@@ -242,6 +246,92 @@ export function getPlatformAgentOverview() {
     monthlyActiveTerminal: summary.monthlyActiveTerminal,
     monthRevenue: summary.monthRevenue,
   }];
+}
+
+// =================== 代理账号审核（一期由平台对代理注册申请做审核） ===================
+export type AgentApplication = {
+  applicationId: string;          // AA-xxxx
+  qq: string;                     // QQ 号
+  contact: string;                // 申请人姓名
+  phone: string;
+  province: string;
+  city: string;
+  companyName: string;            // 公司 / 工作室名称
+  idCardNo: string;               // 身份证号（脱敏展示）
+  bankAccount: string;            // 银行账号（脱敏展示）
+  submittedAt: string;
+  reviewStatus: 'pending' | 'approved' | 'rejected';
+  reviewRemark?: string;
+  reviewAt?: string;
+  reviewer?: string;              // 审核员
+};
+
+const _agentApplications: AgentApplication[] = [
+  {
+    applicationId: 'AA-2031', qq: '882910xxx', contact: '陈志强', phone: '139****6612',
+    province: '广东', city: '广州', companyName: '志强网络科技工作室',
+    idCardNo: '4401**********1234', bankAccount: '6217 **** **** 4521',
+    submittedAt: '2026-06-07 14:32', reviewStatus: 'pending',
+  },
+  {
+    applicationId: 'AA-2030', qq: '519202xxx', contact: '林晓婷', phone: '186****3308',
+    province: '福建', city: '厦门', companyName: '晓婷文化传媒有限公司',
+    idCardNo: '3502**********0826', bankAccount: '6225 **** **** 9032',
+    submittedAt: '2026-06-07 11:08', reviewStatus: 'pending',
+  },
+  {
+    applicationId: 'AA-2029', qq: '460112xxx', contact: '黄建华', phone: '135****7741',
+    province: '浙江', city: '杭州', companyName: '建华网咖管理有限公司',
+    idCardNo: '3301**********5612', bankAccount: '6228 **** **** 1187',
+    submittedAt: '2026-06-06 19:45', reviewStatus: 'pending',
+  },
+  // 历史已审核
+  {
+    applicationId: 'AA-2028', qq: '120384xxx', contact: '赵伟', phone: '187****2245',
+    province: '湖北', city: '武汉', companyName: '伟业网络服务工作室',
+    idCardNo: '4201**********9981', bankAccount: '6226 **** **** 7714',
+    submittedAt: '2026-06-05 09:12',
+    reviewStatus: 'approved', reviewRemark: '资料齐全，已通过', reviewAt: '2026-06-05 16:40', reviewer: '审核员-A',
+  },
+  {
+    applicationId: 'AA-2027', qq: '991023xxx', contact: '孙小芳', phone: '152****8854',
+    province: '四川', city: '成都', companyName: '小芳电竞工作室',
+    idCardNo: '5101**********4423', bankAccount: '6217 **** **** 6608',
+    submittedAt: '2026-06-04 15:20',
+    reviewStatus: 'approved', reviewRemark: '资质齐全', reviewAt: '2026-06-04 17:55', reviewer: '审核员-A',
+  },
+  {
+    applicationId: 'AA-2026', qq: '776205xxx', contact: '刘海洋', phone: '138****9913',
+    province: '江苏', city: '南京', companyName: '海洋数码科技工作室',
+    idCardNo: '3201**********3142', bankAccount: '6228 **** **** 5527',
+    submittedAt: '2026-06-03 10:44',
+    reviewStatus: 'rejected', reviewRemark: '银行账户与身份证姓名不一致，请核对后重新提交', reviewAt: '2026-06-03 14:08', reviewer: '审核员-B',
+  },
+];
+
+export function getPendingAgentApplications(): AgentApplication[] {
+  return _agentApplications.filter((a) => a.reviewStatus === 'pending');
+}
+export function getAgentApplicationHistory(): AgentApplication[] {
+  return _agentApplications.filter((a) => a.reviewStatus !== 'pending');
+}
+export function reviewAgentApprove(applicationId: string, remark?: string, reviewer = '审核员-A'): { ok: boolean } {
+  const a = _agentApplications.find((x) => x.applicationId === applicationId && x.reviewStatus === 'pending');
+  if (!a) return { ok: false };
+  a.reviewStatus = 'approved';
+  a.reviewRemark = remark || '资料齐全，审核通过';
+  a.reviewAt = dayjs().format('YYYY-MM-DD HH:mm');
+  a.reviewer = reviewer;
+  return { ok: true };
+}
+export function reviewAgentReject(applicationId: string, remark: string, reviewer = '审核员-A'): { ok: boolean } {
+  const a = _agentApplications.find((x) => x.applicationId === applicationId && x.reviewStatus === 'pending');
+  if (!a) return { ok: false };
+  a.reviewStatus = 'rejected';
+  a.reviewRemark = remark;
+  a.reviewAt = dayjs().format('YYYY-MM-DD HH:mm');
+  a.reviewer = reviewer;
+  return { ok: true };
 }
 
 export function setCafeLaunched(cafeId: string): boolean {

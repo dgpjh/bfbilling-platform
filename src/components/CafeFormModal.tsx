@@ -7,16 +7,15 @@ export type CafeFormModalProps = {
   onSuccess?: () => void;
 };
 
-// 网吧录入弹窗：代理提交网吧录入申请。
-// ⚠️ 提交后默认进入「平台审核中」状态，由平台审核员通过后才会分配正式网吧 ID（MCxxxx）。
-//    审核通过后，代理即可安排线下铺设霸服系统。
+// 网吧录入弹窗：代理提交网吧基本资料。
+// 一期方案：录入即生效（无需平台审核）；网吧 ID 由系统自动生成（BF + 8 位数字），
+// 代理只需填写名称、地区、地址、终端规模、联系人、网吧密码（6+ 位）。
 export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModalProps) {
   const [form] = Form.useForm();
 
   const onOk = async () => {
     const v = await form.validateFields();
     const cafe = addMyCafe({
-      externalCafeId: v.externalCafeId,
       name: v.name,
       province: v.region[0],
       city: v.region[1],
@@ -25,8 +24,9 @@ export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModa
       terminalScaleCount: v.terminalScaleCount,
       contact: v.contact,
       phone: v.phone,
+      cafePassword: v.cafePassword,
     });
-    message.success(`录入申请已提交，待平台审核（临时编号 ${cafe.tempId}）`);
+    message.success(`录入成功！系统已分配网吧 ID：${cafe.externalCafeId}（系统编号 ${cafe.id}），请安排线下铺设。`);
     form.resetFields();
     onClose();
     onSuccess?.();
@@ -34,30 +34,21 @@ export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModa
 
   return (
     <Modal
-      title="申请录入网吧"
+      title="录入网吧"
       open={open}
       onOk={onOk}
       onCancel={() => { form.resetFields(); onClose(); }}
-      okText="提交录入申请"
+      okText="确认录入"
       cancelText="取消"
       width={640}
       destroyOnClose
     >
       <Alert
         type="info" showIcon style={{ marginBottom: 16 }}
-        message="录入后需经平台审核 → 代理铺设上线"
-        description="网吧 ID 由代理提前向平台或区域经理获取。提交后由平台审核团队人工审核（一般 1 个工作日内），审核通过后即可安排线下铺设霸服系统。"
+        message="录入即生效，可立即安排线下铺设"
+        description="网吧 ID 将由系统自动生成（无需手动填写）。请妥善保管下方设置的网吧密码，用于后续在霸服终端登录。"
       />
       <Form form={form} layout="vertical" requiredMark style={{ marginTop: 4 }}>
-        <Form.Item
-          label="网吧 ID"
-          name="externalCafeId"
-          rules={[{ required: true, message: '请输入网吧 ID' }]}
-          extra="必填。若不知道网吧 ID，可以联系相应区域经理获取。"
-        >
-          <Input placeholder="如：BAFU-SZ-0001" />
-        </Form.Item>
-
         <Form.Item label="网吧名称" name="name" rules={[{ required: true, message: '请输入网吧名称' }]}>
           <Input placeholder="如：星辰电竞·南山旗舰店" />
         </Form.Item>
@@ -76,7 +67,7 @@ export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModa
               label="终端规模数（台）"
               name="terminalScaleCount"
               rules={[{ required: true, message: '请输入终端规模数' }]}
-              extra="代理人工录入，可后续编辑；已活跃终端数由上线后数据回传"
+              extra="代理人工录入，可后续编辑"
             >
               <InputNumber min={1} max={5000} style={{ width: '100%' }} placeholder="如 100" />
             </Form.Item>
@@ -92,6 +83,20 @@ export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModa
             </Form.Item>
           </Col>
         </Row>
+
+        <Form.Item
+          label="网吧密码"
+          name="cafePassword"
+          rules={[
+            { required: true, message: '请设置网吧密码' },
+            { min: 6, message: '密码至少 6 位' },
+            { max: 32, message: '密码最长 32 位' },
+            { pattern: /^[\x21-\x7e]+$/, message: '仅支持英文字母、数字与常用符号' },
+          ]}
+          extra="6 位以上，用于在霸服终端登录该网吧。请妥善保管。"
+        >
+          <Input.Password placeholder="请输入 6 位以上密码" autoComplete="new-password" />
+        </Form.Item>
       </Form>
     </Modal>
   );

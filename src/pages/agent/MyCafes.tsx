@@ -31,8 +31,6 @@ import CafeFormModal from '../../components/CafeFormModal';
 const { Text, Paragraph } = Typography;
 
 function statusTag(cafe: MyCafe) {
-  if (cafe.platformAuditStatus === 'pending') return <Tag color="processing" icon={<HourglassOutlined />}>平台审核中</Tag>;
-  if (cafe.platformAuditStatus === 'rejected') return <Tag color="error" icon={<CloseCircleOutlined />}>已驳回</Tag>;
   if (!cafe.launchedAt) return <Tag color="orange" icon={<HourglassOutlined />}>待铺设</Tag>;
   return <Tag color="success" icon={<CheckCircleOutlined />}>已上线</Tag>;
 }
@@ -59,10 +57,6 @@ export default function MyCafes() {
   const monthlyActiveRate = summary.terminalCount > 0
     ? (summary.monthlyActiveTerminal / summary.terminalCount) * 100 : 0;
   const pendingLaunchCafes = getPendingLaunchCafesForAgent(CURRENT_AGENT_ID);
-  const pendingAuditCafes = useMemo(
-    () => cafes.filter((c) => c.platformAuditStatus === 'pending'),
-    [cafes, tick],
-  );
   // 已上线网吧（用于历史流水查询的可选范围）
   const launchedCafes = useMemo(
     () => cafes.filter((c) => !!c.launchedAt && !!c.id),
@@ -145,15 +139,7 @@ export default function MyCafes() {
     },
     {
       title: '系统 ID', key: 'id', width: 140,
-      render: (_: any, r: MyCafe) => {
-        if (r.platformAuditStatus === 'pending') {
-          return <Tooltip title="平台审核通过后可安排铺设"><Tag color="default">{r.tempId}（待审核）</Tag></Tooltip>;
-        }
-        if (r.platformAuditStatus === 'rejected') {
-          return <Tooltip title={r.platformAuditRemark}><Tag color="error">{r.tempId || '已驳回'}</Tag></Tooltip>;
-        }
-        return <Tag color="gold" style={{ fontWeight: 600 }}>{r.id}</Tag>;
-      },
+      render: (_: any, r: MyCafe) => <Tag color="gold" style={{ fontWeight: 600 }}>{r.id}</Tag>,
     },
     {
       title: '网吧名称', dataIndex: 'name', width: 220,
@@ -167,7 +153,6 @@ export default function MyCafes() {
     {
       title: '终端规模', key: 'terminal', width: 120, align: 'right' as const,
       render: (_: any, r: MyCafe) => {
-        if (r.platformAuditStatus !== 'approved') return <Text type="secondary">—</Text>;
         if (!r.launchedAt) return <Tag color="orange">⏳ 待铺设</Tag>;
         return <span>{r.terminalCount} 台</span>;
       },
@@ -183,7 +168,7 @@ export default function MyCafes() {
     {
       title: '月活 / 月活率', key: 'monthly', width: 210,
       render: (_: any, r: MyCafe) => {
-        if (r.platformAuditStatus !== 'approved' || !r.launchedAt) {
+        if (!r.launchedAt) {
           return <Text type="secondary" style={{ fontSize: 12 }}>—</Text>;
         }
         const rate = r.terminalScaleCount > 0 ? (r.monthlyActiveTerminal / r.terminalScaleCount) * 100 : 0;
@@ -203,7 +188,7 @@ export default function MyCafes() {
     {
       title: '本月流水', dataIndex: 'monthRevenue', width: 130, align: 'right' as const,
       render: (_: any, r: MyCafe) => {
-        if (r.platformAuditStatus !== 'approved' || !r.launchedAt) return <Text type="secondary">—</Text>;
+        if (!r.launchedAt) return <Text type="secondary">—</Text>;
         return <span className="money">¥ {r.monthRevenue.toLocaleString()}</span>;
       },
     },
@@ -223,7 +208,7 @@ export default function MyCafes() {
     {
       title: '操作', width: 210, fixed: 'right' as const,
       render: (_: any, r: MyCafe) => {
-        const canLaunch = r.platformAuditStatus === 'approved' && !r.launchedAt;
+        const canLaunch = !r.launchedAt;
         return (
           <Space>
             <a>详情</a>
@@ -256,68 +241,27 @@ export default function MyCafes() {
 
       <Alert
         type="info" showIcon style={{ marginBottom: 16 }}
-        message="代理主链路：获取网吧 ID → 录入网吧 → 平台审核 → 代理铺设霸服上线 → 数据回传展示"
+        message="代理主链路：录入网吧（系统自动分配 ID） → 代理铺设霸服上线 → 数据回传展示"
       />
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col xs={12} md={5}>
+        <Col xs={12} md={6}>
           <Card><Statistic title={<Space><ShopOutlined /> 已录入网吧</Space>} value={summary.cafeCount} suffix="家" /></Card>
         </Col>
-        <Col xs={12} md={5}>
+        <Col xs={12} md={6}>
           <Card><Statistic title={<Space><DesktopOutlined /> 终端规模</Space>} value={summary.terminalScaleCount} suffix="台" /></Card>
         </Col>
-        <Col xs={12} md={4}>
-          <Card style={{ borderLeft: '3px solid #1677FF' }}>
-            <Statistic title={<Space><HourglassOutlined /> 待审核</Space>} value={summary.pendingAuditCount} suffix="家" valueStyle={{ color: '#1677FF' }} />
-          </Card>
-        </Col>
-        <Col xs={12} md={4}>
+        <Col xs={12} md={6}>
           <Card style={{ borderLeft: '3px solid #FAAD14' }}>
             <Statistic title={<Space><ThunderboltOutlined /> 待铺设</Space>} value={summary.pendingLaunchCount} suffix="家" valueStyle={{ color: '#FAAD14' }} />
           </Card>
         </Col>
-        <Col xs={24} md={6}>
+        <Col xs={12} md={6}>
           <Card>
             <Statistic title={<Space><RiseOutlined /> 本月流水</Space>} value={summary.monthRevenue} prefix="¥" groupSeparator="," />
           </Card>
         </Col>
       </Row>
-
-      {pendingAuditCafes.length > 0 && (
-        <Card
-          style={{ marginBottom: 16, borderLeft: '3px solid #1677FF' }}
-          title={<Space><Badge count={pendingAuditCafes.length} style={{ backgroundColor: '#1677FF' }} /><span style={{ fontSize: 16, fontWeight: 600 }}>⏳ 待审核网吧（平台审核中，一般 1 个工作日内）</span></Space>}
-        >
-          <List
-            dataSource={pendingAuditCafes}
-            renderItem={(c) => (
-              <List.Item
-                actions={[
-                  <Tag key="status" color="processing" icon={<HourglassOutlined />}>平台审核中</Tag>,
-                ]}
-              >
-                <List.Item.Meta
-                  title={
-                    <Space wrap>
-                      <Tag color="blue">{c.externalCafeId}</Tag>
-                      <Tag color="default">{c.tempId}（待审核）</Tag>
-                      <span>{c.name}</span>
-                      <Text type="secondary">· {c.province}·{c.city}</Text>
-                    </Space>
-                  }
-                  description={
-                    <Space wrap split="·" size={4}>
-                      <Text type="secondary" style={{ fontSize: 12 }}>终端规模 {c.terminalScaleCount} 台</Text>
-                      <Text type="secondary" style={{ fontSize: 12 }}>联系人：{c.contact} {c.phone}</Text>
-                      <Text type="secondary" style={{ fontSize: 12 }}>地址：{c.address}</Text>
-                    </Space>
-                  }
-                />
-              </List.Item>
-            )}
-          />
-        </Card>
-      )}
 
       {pendingLaunchCafes.length > 0 && (
         <Card

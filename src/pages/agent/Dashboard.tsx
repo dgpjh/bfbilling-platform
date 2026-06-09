@@ -86,18 +86,10 @@ export default function Dashboard() {
         </Row>
       </Card>
 
-      {summary.pendingAuditCount > 0 && (
-        <Alert
-          type="info" showIcon icon={<HourglassOutlined />} style={{ marginBottom: 16 }}
-          message={`你有 ${summary.pendingAuditCount} 家网吧正在等待平台审核`}
-          description="审核通过后即可安排线下铺设霸服系统；网吧 ID 由代理提前向平台或区域经理获取。"
-          action={<Button size="small" onClick={() => navigate('/agent/my-cafes')}>查看 <ArrowRightOutlined /></Button>}
-        />
-      )}
       {summary.pendingLaunchCount > 0 && (
         <Alert
           type="warning" showIcon style={{ marginBottom: 16 }}
-          message={`你有 ${summary.pendingLaunchCount} 家网吧已审核但「待铺设霸服系统」`}
+          message={`你有 ${summary.pendingLaunchCount} 家网吧待铺设霸服系统`}
           description="请尽快完成线下铺设；铺设完成后才会有终端 / 活跃 / 流水数据回传。"
           action={<Button size="small" type="primary" onClick={() => navigate('/agent/my-cafes')}>去处理 <ArrowRightOutlined /></Button>}
         />
@@ -113,7 +105,7 @@ export default function Dashboard() {
               valueStyle={{ color: '#FF5562', fontSize: 32, fontWeight: 700 }}
             />
             <div style={{ marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-              待审核 {summary.pendingAuditCount} · 待铺设 {summary.pendingLaunchCount}
+              待铺设 {summary.pendingLaunchCount} 家
             </div>
           </Card>
         </Col>
