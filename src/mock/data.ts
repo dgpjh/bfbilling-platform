@@ -278,6 +278,83 @@ export function getCafeRevenueHistory(cafe: MyCafe): CafeRevenueRecord[] {
   ];
 }
 
+// ============== 日级流水（用于历史流水查询页） ==============
+export type CafeDailyRevenueRecord = {
+  date: string;              // YYYY-MM-DD
+  cafeId: string;            // 系统 ID（MCxxxx）
+  cafeName: string;          // 网吧名称
+  externalCafeId: string;    // 业务网吧 ID
+  province: string;
+  city: string;
+  revenue: number;           // 当日流水
+  activeTerminal: number;    // 当日活跃终端
+  dailyActiveTerminal: number;
+  status: 'settled';
+};
+
+// 简易确定性 hash（让同一家店每天数据稳定，刷新页面不变）
+function _seedHash(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+/** 生成单店近 N 天日流水（只对已上线网吧生效）。已 settled，时间倒序。 */
+export function getCafeDailyRevenue(cafe: MyCafe, days = 60): CafeDailyRevenueRecord[] {
+  if (!cafe.launchedAt || !cafe.id) return [];
+  const monthBase = cafe.monthRevenue || cafe.terminalCount * 300;
+  // 估算单日基准：月流水 / 30
+  const dailyBase = monthBase / 30;
+  const now = new Date('2026-06-08T00:00:00'); // 与 mock 业务时点对齐，避免随机
+  const records: CafeDailyRevenueRecord[] = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    const dow = d.getDay(); // 0=Sun, 6=Sat
+    const isWeekend = dow === 0 || dow === 6;
+    // 工作日 0.85~1.05，周末 1.05~1.30
+    const seed = _seedHash(`${cafe.id}-${dateStr}`) % 1000;
+    const noise = (seed / 1000) * 0.2; // 0~0.2
+    const factor = isWeekend ? 1.05 + noise + 0.05 : 0.85 + noise;
+    const revenue = Math.round(dailyBase * factor);
+    const activeTerminal = Math.max(
+      0,
+      Math.round((cafe.terminalCount || 0) * (isWeekend ? 0.95 : 0.78) + ((seed % 11) - 5)),
+    );
+    const dailyActiveTerminal = Math.max(
+      0,
+      Math.round((cafe.dailyActiveTerminal || 0) * (isWeekend ? 1.08 : 0.92) + ((seed % 7) - 3)),
+    );
+    records.push({
+      date: dateStr,
+      cafeId: cafe.id,
+      cafeName: cafe.name,
+      externalCafeId: cafe.externalCafeId,
+      province: cafe.province,
+      city: cafe.city,
+      revenue,
+      activeTerminal,
+      dailyActiveTerminal,
+      status: 'settled',
+    });
+  }
+  return records;
+}
+
+/** 拿到代理名下所有已上线网吧的近 N 天日流水，合并后按时间倒序（同日内按流水降序）。 */
+export function getAgentDailyRevenueRecords(agentId: string, days = 60): CafeDailyRevenueRecord[] {
+  const cafes = getCafesByAgent(agentId).filter((c) => c.launchedAt);
+  const all = cafes.flatMap((c) => getCafeDailyRevenue(c, days));
+  return all.sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return b.revenue - a.revenue;
+  });
+}
+
 export function deleteCafe(cafeIdOrTempId: string, agentId: string): { ok: boolean; reason?: 'not_found' | 'not_yours' } {
   const idx = _myCafes.findIndex((c) => (c.id || c.tempId) === cafeIdOrTempId);
   if (idx < 0) return { ok: false, reason: 'not_found' };

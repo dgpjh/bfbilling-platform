@@ -6,17 +6,18 @@ import { useMemo, useState } from 'react';
 import {
   Table, Button, Card, Tag, Space, Row, Col, Empty, Alert, Badge, List,
   Modal, Input, InputNumber, Typography, message, Descriptions, Statistic, Progress,
-  Tooltip, Form,
+  Tooltip, Form, Select,
 } from 'antd';
 import {
   PlusOutlined, ShopOutlined, DeleteOutlined, ExclamationCircleFilled,
   DesktopOutlined, RiseOutlined, ThunderboltOutlined, WarningFilled,
   HourglassOutlined, CheckCircleOutlined, CloseCircleOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import {
   getCafesByAgent,
   getPendingLaunchCafesForAgent,
-  getCafeRevenueHistory,
+  getAgentDailyRevenueRecords,
   setCafeLaunched,
   deleteCafe,
   updateCafeInfo,
@@ -43,7 +44,8 @@ export default function MyCafes() {
   const [cafeFormOpen, setCafeFormOpen] = useState(false);
   const [editModal, setEditModal] = useState<MyCafe | null>(null);
   const [editForm] = Form.useForm();
-  const [revenueModal, setRevenueModal] = useState<MyCafe | null>(null);
+  const [revenueQueryOpen, setRevenueQueryOpen] = useState(false);
+  const [selectedCafeIds, setSelectedCafeIds] = useState<string[]>([]);
   const [deleteModal, setDeleteModal] = useState<MyCafe | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const cafes = getCafesByAgent(CURRENT_AGENT_ID);
@@ -55,6 +57,28 @@ export default function MyCafes() {
     () => cafes.filter((c) => c.platformAuditStatus === 'pending'),
     [cafes, tick],
   );
+  // 已上线网吧（用于历史流水查询的可选范围）
+  const launchedCafes = useMemo(
+    () => cafes.filter((c) => !!c.launchedAt && !!c.id),
+    [cafes, tick],
+  );
+  // 历史流水查询：按筛选过滤后的记录（默认全部）
+  const revenueQueryRecords = useMemo(() => {
+    if (!revenueQueryOpen) return [];
+    const all = getAgentDailyRevenueRecords(CURRENT_AGENT_ID, 60);
+    if (selectedCafeIds.length === 0) return all;
+    const set = new Set(selectedCafeIds);
+    return all.filter((r) => set.has(r.cafeId));
+  }, [revenueQueryOpen, selectedCafeIds, tick]);
+  // 汇总统计
+  const revenueQuerySummary = useMemo(() => {
+    const recordCount = revenueQueryRecords.length;
+    const totalRevenue = revenueQueryRecords.reduce((s, r) => s + r.revenue, 0);
+    // 日均：按"涉及天数"分母（不同网吧同日只算一天）
+    const days = new Set(revenueQueryRecords.map((r) => r.date)).size || 1;
+    const dailyAvg = Math.round(totalRevenue / days);
+    return { recordCount, totalRevenue, dailyAvg };
+  }, [revenueQueryRecords]);
 
   const openEdit = (cafe: MyCafe) => {
     editForm.setFieldsValue({
@@ -192,7 +216,6 @@ export default function MyCafes() {
           <Space>
             <a>详情</a>
             <a onClick={() => openEdit(r)}>编辑</a>
-            <a onClick={() => setRevenueModal(r)}>流水记录</a>
             {canLaunch && (
               <a style={{ color: '#FAAD14' }} onClick={() => {
                 if (setCafeLaunched(r.id)) { message.success(`「${r.name}」霸服已上线`); refresh(); }
@@ -213,7 +236,10 @@ export default function MyCafes() {
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ margin: 0 }}>网吧管理</h2>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCafeFormOpen(true)}>录入网吧</Button>
+        <Space>
+          <Button icon={<BarChartOutlined />} onClick={() => setRevenueQueryOpen(true)}>历史流水查询</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCafeFormOpen(true)}>录入网吧</Button>
+        </Space>
       </div>
 
       <Alert
@@ -334,34 +360,109 @@ export default function MyCafes() {
       <CafeFormModal open={cafeFormOpen} onClose={() => setCafeFormOpen(false)} onSuccess={refresh} />
 
       <Modal
-        title={`流水记录${revenueModal ? `：${revenueModal.name}` : ''}`}
-        open={!!revenueModal}
-        onCancel={() => setRevenueModal(null)}
+        title={<Space><BarChartOutlined /> <span>历史流水查询</span></Space>}
+        open={revenueQueryOpen}
+        onCancel={() => setRevenueQueryOpen(false)}
         footer={null}
-        width={760}
+        width={1080}
+        destroyOnClose
       >
         <Alert
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
-          message="可查看历史月份实际流水"
-          description="仅展示已结算的实际流水记录；正式环境可按月份筛选、导出明细。"
+          message="按日展示已结算流水（近 60 天，时间倒序）"
+          description="默认展示当前代理名下全部已上线网吧；可通过下拉框筛选某几家网吧。仅展示已结算流水，不含本月预估口径。"
         />
-        {revenueModal && (
-          <Table
-            rowKey="month"
-            size="small"
-            pagination={false}
-            dataSource={getCafeRevenueHistory(revenueModal)}
-            columns={[
-              { title: '月份', dataIndex: 'month', width: 100 },
-              { title: '流水金额', dataIndex: 'revenue', align: 'right' as const, render: (v: number) => <span className="money">¥ {v.toLocaleString()}</span> },
-              { title: '已活跃终端', dataIndex: 'activeTerminal', align: 'right' as const, render: (v: number) => `${v} 台` },
-              { title: '日活终端', dataIndex: 'dailyActiveTerminal', align: 'right' as const, render: (v: number) => `${v} 台` },
-              { title: '月活终端', dataIndex: 'monthlyActiveTerminal', align: 'right' as const, render: (v: number) => `${v} 台` },
-              { title: '状态', dataIndex: 'status', width: 90, render: () => <Tag color="success">实际已结算</Tag> },
-            ]}
+        <Space style={{ marginBottom: 12, width: '100%' }} wrap>
+          <span style={{ color: 'rgba(0,0,0,0.65)' }}>网吧筛选：</span>
+          <Select
+            mode="multiple"
+            allowClear
+            showSearch
+            placeholder="不选 = 全部网吧（支持名称 / 网吧 ID 模糊搜索）"
+            style={{ minWidth: 480 }}
+            value={selectedCafeIds}
+            onChange={setSelectedCafeIds}
+            optionFilterProp="label"
+            maxTagCount="responsive"
+            options={launchedCafes.map((c) => ({
+              value: c.id,
+              label: `${c.name}（${c.externalCafeId}）`,
+            }))}
           />
+          {selectedCafeIds.length > 0 && (
+            <Button size="small" onClick={() => setSelectedCafeIds([])}>清空筛选</Button>
+          )}
+        </Space>
+
+        {launchedCafes.length === 0 ? (
+          <Empty description="暂无已上线网吧，无法查询流水" />
+        ) : (
+          <>
+            <Row gutter={12} style={{ marginBottom: 12 }}>
+              <Col span={6}>
+                <Card size="small">
+                  <Statistic title="筛选范围" value={selectedCafeIds.length === 0 ? launchedCafes.length : selectedCafeIds.length} suffix={`/ ${launchedCafes.length} 家`} />
+                </Card>
+              </Col>
+              <Col span={6}>
+                <Card size="small"><Statistic title="记录条数" value={revenueQuerySummary.recordCount} suffix="条" /></Card>
+              </Col>
+              <Col span={6}>
+                <Card size="small">
+                  <Statistic title="累计流水" value={revenueQuerySummary.totalRevenue} prefix="¥" groupSeparator="," />
+                </Card>
+              </Col>
+              <Col span={6}>
+                <Card size="small">
+                  <Statistic title="日均流水" value={revenueQuerySummary.dailyAvg} prefix="¥" groupSeparator="," />
+                </Card>
+              </Col>
+            </Row>
+
+            <Table
+              rowKey={(r) => `${r.cafeId}-${r.date}`}
+              size="small"
+              pagination={{ pageSize: 15, showSizeChanger: true, pageSizeOptions: ['15', '30', '60'] }}
+              dataSource={revenueQueryRecords}
+              scroll={{ x: 900 }}
+              columns={[
+                { title: '日期', dataIndex: 'date', width: 110, fixed: 'left' as const,
+                  render: (v: string) => {
+                    const dow = new Date(v).getDay();
+                    const isWeekend = dow === 0 || dow === 6;
+                    return <span style={{ color: isWeekend ? '#FF4D4F' : undefined }}>{v}{isWeekend && <Tag color="red" style={{ marginLeft: 6 }}>周末</Tag>}</span>;
+                  },
+                },
+                { title: '网吧', key: 'cafe', width: 280,
+                  render: (_: any, r) => (
+                    <Space direction="vertical" size={0}>
+                      <Space size={6}>
+                        <Tag color="blue">{r.externalCafeId}</Tag>
+                        <Tag color="gold">{r.cafeId}</Tag>
+                      </Space>
+                      <span style={{ fontWeight: 500 }}>{r.cafeName}</span>
+                      <Text type="secondary" style={{ fontSize: 12 }}>{r.province}·{r.city}</Text>
+                    </Space>
+                  ),
+                },
+                { title: '当日流水', dataIndex: 'revenue', width: 130, align: 'right' as const,
+                  sorter: (a, b) => a.revenue - b.revenue,
+                  render: (v: number) => <span className="money" style={{ fontWeight: 600 }}>¥ {v.toLocaleString()}</span>,
+                },
+                { title: '已活跃终端', dataIndex: 'activeTerminal', width: 110, align: 'right' as const,
+                  render: (v: number) => `${v} 台`,
+                },
+                { title: '日活终端', dataIndex: 'dailyActiveTerminal', width: 110, align: 'right' as const,
+                  render: (v: number) => `${v} 台`,
+                },
+                { title: '状态', dataIndex: 'status', width: 100,
+                  render: () => <Tag color="success">实际已结算</Tag>,
+                },
+              ]}
+            />
+          </>
         )}
       </Modal>
 
