@@ -58,11 +58,11 @@ export default function PlatformAudit() {
     }
     if (decideModal.type === 'approve') {
       const r = reviewAgentApprove(decideModal.app.applicationId, decideRemark || '资料齐全，审核通过');
-      if (r.ok) message.success(`已通过代理账号申请：${decideModal.app.contact}`);
+      if (r.ok) message.success(`已通过母账号申请：${decideModal.app.accountName}`);
       else message.error('操作失败');
     } else {
       const r = reviewAgentReject(decideModal.app.applicationId, decideRemark);
-      if (r.ok) message.success('已驳回该代理账号申请');
+      if (r.ok) message.success('已驳回该母账号申请');
       else message.error('操作失败');
     }
     setDecideModal(null); setDecideRemark(''); refresh();
@@ -95,8 +95,10 @@ export default function PlatformAudit() {
 
   const pendingAgentColumns = [
     { title: '申请编号', dataIndex: 'applicationId', width: 120, render: (v: string) => <Tag>{v}</Tag> },
+    { title: '母账号名', dataIndex: 'accountName', width: 140, render: (v: string) => <Tag color="gold">{v}</Tag> },
     { title: '申请人', dataIndex: 'contact', width: 100 },
-    { title: 'QQ 号', dataIndex: 'qq', width: 130, render: (v: string) => <Tag color="blue">{v}</Tag> },
+    { title: '账号类型', key: 'accountType', width: 110, render: () => <Tag color="red">母账号</Tag> },
+    { title: 'QQ 鉴权', key: 'qq', width: 150, render: (_: any, r: AgentApplication) => <Space size={4}><Tag color="blue">{r.qq}</Tag>{r.qqVerified && <Tag color="success">已鉴权</Tag>}</Space> },
     { title: '联系电话', dataIndex: 'phone', width: 130 },
     { title: '所在地区', key: 'region', width: 130, render: (_: any, r: AgentApplication) => `${r.province}·${r.city}` },
     { title: '公司 / 工作室', dataIndex: 'companyName', width: 200, ellipsis: true },
@@ -116,8 +118,9 @@ export default function PlatformAudit() {
 
   const historyAgentColumns = [
     { title: '申请编号', dataIndex: 'applicationId', width: 120, render: (v: string) => <Tag>{v}</Tag> },
+    { title: '母账号名', dataIndex: 'accountName', width: 140, render: (v: string) => <Tag color="gold">{v}</Tag> },
     { title: '申请人', dataIndex: 'contact', width: 100 },
-    { title: 'QQ 号', dataIndex: 'qq', width: 130, render: (v: string) => <Tag color="blue">{v}</Tag> },
+    { title: 'QQ 鉴权', key: 'qq', width: 150, render: (_: any, r: AgentApplication) => <Space size={4}><Tag color="blue">{r.qq}</Tag>{r.qqVerified && <Tag color="success">已鉴权</Tag>}</Space> },
     { title: '所在地区', key: 'region', width: 130, render: (_: any, r: AgentApplication) => `${r.province}·${r.city}` },
     { title: '公司 / 工作室', dataIndex: 'companyName', width: 200, ellipsis: true },
     { title: '审核结果', key: 'status', width: 110, render: (_: any, r: AgentApplication) => r.reviewStatus === 'approved' ? <Tag color="success" icon={<CheckCircleOutlined />}>已通过</Tag> : <Tag color="error" icon={<CloseCircleOutlined />}>已驳回</Tag> },
@@ -134,7 +137,7 @@ export default function PlatformAudit() {
         <Col xs={12} md={4}><Card><Statistic title={<Space><DesktopOutlined /> 终端规模</Space>} value={platformSummary.terminalScaleCount} suffix="台" valueStyle={{ color: '#FAAD14' }} /></Card></Col>
         <Col xs={12} md={4}><Card><Statistic title={<Space><ThunderboltOutlined /> 已活跃终端</Space>} value={platformSummary.terminalCount} suffix="台" valueStyle={{ color: '#52C41A' }} /></Card></Col>
         <Col xs={12} md={4}><Card><Statistic title={<Space><DollarCircleOutlined /> 本月流水</Space>} value={platformSummary.monthRevenue} prefix="¥" groupSeparator="," valueStyle={{ color: '#FFD66B' }} /></Card></Col>
-        <Col xs={12} md={4}><Card><Statistic title={<Space><UserOutlined /> 待审核代理</Space>} value={pendingAgents.length} suffix="个" valueStyle={{ color: '#FAAD14' }} /></Card></Col>
+        <Col xs={12} md={4}><Card><Statistic title={<Space><UserOutlined /> 待审核母账号</Space>} value={pendingAgents.length} suffix="个" valueStyle={{ color: '#FAAD14' }} /></Card></Col>
       </Row>
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
@@ -168,7 +171,7 @@ export default function PlatformAudit() {
         <Col xs={24} lg={10}>
           <Card title={<span style={{ color: '#fff' }}>待处理事项</span>} styles={{ header: { borderBottom: '1px solid #2A1A1C' } }}>
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              <Alert type="warning" showIcon message={`${pendingAgents.length} 个代理账号申请待审核`} />
+              <Alert type="warning" showIcon message={`${pendingAgents.length} 个母账号申请待审核`} />
               <Alert type="info" showIcon message={`${platformSummary.pendingLaunchCount} 家网吧待铺设`} />
               <Alert type="success" showIcon message={`${platformSummary.launchedCafeCount} 家网吧已上线回传数据`} />
             </Space>
@@ -207,7 +210,7 @@ export default function PlatformAudit() {
           <Avatar style={{ background: '#FF2E3E' }} icon={<SafetyCertificateOutlined />} />
           <div>
             <div style={{ color: '#fff', fontSize: 16, fontWeight: 600 }}>平台管理端</div>
-            <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12 }}>平台 · 总览 / 网吧明细 / 代理账号审核</div>
+            <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12 }}>平台 · 总览 / 网吧明细 / 母账号审核</div>
           </div>
         </Space>
         <Space>
@@ -220,7 +223,7 @@ export default function PlatformAudit() {
         <Alert
           type="info" showIcon style={{ marginBottom: 16 }}
           message="平台管理端 = 所有代理数据的上级汇总视角"
-          description="平台可查看全量代理、网吧、终端、活跃与本月流水数据；本期网吧录入即生效（无需审核），仅保留代理账号注册申请的人工审核。"
+          description="平台可查看全量代理、网吧、终端、活跃与本月流水数据；本期网吧录入即生效（无需审核），用户自助创建的母账号仍需平台人工审批。"
         />
 
         <Tabs
@@ -242,13 +245,13 @@ export default function PlatformAudit() {
             },
             {
               key: 'agentAudit',
-              label: <span><AuditOutlined /> 代理账号审核（{pendingAgents.length} 待审）</span>,
+              label: <span><AuditOutlined /> 母账号审核（{pendingAgents.length} 待审）</span>,
               children: (
                 <Card>
                   <Alert
                     type="info" showIcon style={{ marginBottom: 12 }}
-                    message="代理账号审核 = 对代理注册申请做合规审核"
-                    description="审核要点：身份证 / 银行账号 / 公司或工作室主体真实性。通过后该代理可登录平台并录入网吧；驳回后申请人需重新提交资料。"
+                    message="母账号审核 = 对用户自助创建的结算平台母账号做合规审核"
+                    description="审核要点：自定义账号名、QQ 一次鉴权、身份证 / 银行账号 / 公司或工作室主体真实性。通过后母账号可登录平台，并可自行创建关联子账号。"
                   />
                   <Tabs
                     items={[
@@ -271,7 +274,7 @@ export default function PlatformAudit() {
         />
 
         <Modal
-          title={decideModal?.type === 'approve' ? '通过代理账号申请' : '驳回代理账号申请'}
+          title={decideModal?.type === 'approve' ? '通过母账号申请' : '驳回母账号申请'}
           open={!!decideModal}
           onOk={submit}
           onCancel={() => setDecideModal(null)}
@@ -283,8 +286,10 @@ export default function PlatformAudit() {
             <>
               <Descriptions column={1} size="small" bordered style={{ marginBottom: 12 }}>
                 <Descriptions.Item label="申请编号"><Tag>{decideModal.app.applicationId}</Tag></Descriptions.Item>
+                <Descriptions.Item label="母账号名"><Tag color="gold">{decideModal.app.accountName}</Tag></Descriptions.Item>
                 <Descriptions.Item label="申请人">{decideModal.app.contact}</Descriptions.Item>
-                <Descriptions.Item label="QQ 号"><Tag color="blue">{decideModal.app.qq}</Tag></Descriptions.Item>
+                <Descriptions.Item label="账号类型"><Tag color="red">母账号</Tag></Descriptions.Item>
+                <Descriptions.Item label="QQ 鉴权"><Space><Tag color="blue">{decideModal.app.qq}</Tag>{decideModal.app.qqVerified && <Tag color="success">已鉴权</Tag>}</Space></Descriptions.Item>
                 <Descriptions.Item label="联系电话">{decideModal.app.phone}</Descriptions.Item>
                 <Descriptions.Item label="所在地区">{decideModal.app.province}·{decideModal.app.city}</Descriptions.Item>
                 <Descriptions.Item label="公司 / 工作室">{decideModal.app.companyName}</Descriptions.Item>
@@ -295,8 +300,8 @@ export default function PlatformAudit() {
               <Alert
                 type={decideModal.type === 'approve' ? 'success' : 'warning'} showIcon style={{ marginBottom: 12 }}
                 message={decideModal.type === 'approve'
-                  ? '通过后该代理账号即生效，申请人可登录平台并录入网吧'
-                  : '驳回后申请人需根据驳回原因重新提交资料'}
+                  ? '通过后该母账号即生效，申请人可登录平台，并可创建关联子账号'
+                  : '驳回后申请人需根据驳回原因重新提交母账号申请'}
               />
               <Input.TextArea rows={3} value={decideRemark} onChange={(e) => setDecideRemark(e.target.value)} placeholder={decideModal.type === 'approve' ? '审核备注（选填）' : '驳回原因（必填）'} maxLength={200} showCount />
             </>

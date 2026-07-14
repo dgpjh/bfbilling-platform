@@ -6,8 +6,9 @@ import {
   UserOutlined,
   LogoutOutlined,
   CustomerServiceOutlined,
+  ApartmentOutlined,
 } from '@ant-design/icons';
-import { agentInfo } from '../mock/data';
+import { agentInfo, getParentSettlementAccount } from '../mock/data';
 import brandLogo from '../assets/brand-logo.png';
 
 const { Header, Sider, Content } = Layout;
@@ -16,11 +17,13 @@ export default function AgentLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const me = agentInfo;
+  const parentAccount = getParentSettlementAccount();
   const showContact = () => message.info('联系客服：请联系对应区域经理，或添加客服 QQ 8008208820（Demo）');
 
   const menuItems = [
     { key: '/agent/dashboard', icon: <DashboardOutlined />, label: '概览首页' },
     { key: '/agent/my-cafes', icon: <ShopOutlined />, label: '网吧管理' },
+    { key: '/agent/accounts', icon: <ApartmentOutlined />, label: '子母账号' },
     { key: '/agent/profile', icon: <UserOutlined />, label: '代理信息' },
   ];
 
@@ -69,7 +72,8 @@ export default function AgentLayout() {
         >
           <div style={{ fontSize: 16, fontWeight: 500, color: 'rgba(255,255,255,0.92)', display: 'flex', alignItems: 'center', gap: 12 }}>
             <span>欢迎，{me.contact}</span>
-            <Tag color="red" style={{ marginLeft: 0 }}>代理</Tag>
+            <Tag color="red" style={{ marginLeft: 0 }}>母账号</Tag>
+            <Tag color="default" style={{ marginLeft: 0 }}>{parentAccount.username}</Tag>
           </div>
           <Space size={20}>
             <Button size="small" ghost icon={<CustomerServiceOutlined />} onClick={showContact}>
@@ -78,6 +82,7 @@ export default function AgentLayout() {
             <Dropdown
               menu={{
                 items: [
+                  { key: 'accounts', icon: <ApartmentOutlined />, label: '子母账号', onClick: () => navigate('/agent/accounts') },
                   { key: 'profile', icon: <UserOutlined />, label: '代理信息', onClick: () => navigate('/agent/profile') },
                   { type: 'divider' as const },
                   { key: 'logout', icon: <LogoutOutlined />, label: '退出登录', onClick: () => navigate('/') },

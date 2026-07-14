@@ -166,7 +166,7 @@ export default function MyCafes() {
       render: (_: any, r: MyCafe) => r.launchedAt ? <span>{r.dailyActiveTerminal} 台</span> : <Text type="secondary">—</Text>,
     },
     {
-      title: '月活 / 月活率', key: 'monthly', width: 210,
+      title: '月活跃结算终端 / 比例', key: 'monthly', width: 230,
       render: (_: any, r: MyCafe) => {
         if (!r.launchedAt) {
           return <Text type="secondary" style={{ fontSize: 12 }}>—</Text>;

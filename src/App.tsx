@@ -5,6 +5,7 @@ import Login from './pages/agent/Login';
 
 import AgentDashboard from './pages/agent/Dashboard';
 import AgentMyCafes from './pages/agent/MyCafes';
+import AgentAccounts from './pages/agent/AccountManagement';
 import AgentProfile from './pages/agent/Profile';
 
 import PlatformAudit from './pages/admin/PlatformAudit';
@@ -24,6 +25,7 @@ export default function App() {
         <Route index element={<Navigate to="/agent/dashboard" replace />} />
         <Route path="dashboard" element={<AgentDashboard />} />
         <Route path="my-cafes" element={<AgentMyCafes />} />
+        <Route path="accounts" element={<AgentAccounts />} />
         <Route path="profile" element={<AgentProfile />} />
       </Route>
 

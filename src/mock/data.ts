@@ -3,7 +3,7 @@
 // 核心变化：
 //   1) 取消网吧主角色，不再维护 ownerId / ownerProfile / LinkRequest
 //   2) 所有网吧由代理直接录入、直接管理，代理负责铺设与后续数据查看
-//   3) 平台仅审核「网吧录入资料」并分配 MC ID；不再参与代理↔网吧主关联审批
+//   3) 网吧录入一期免审核；平台仅审核用户自助创建的母账号，母账号可创建子账号
 // ===========================================================================
 import dayjs from 'dayjs';
 
@@ -43,11 +43,11 @@ export const provinceCityOptions = [
 
 // =================== 网吧模型 ===================
 // v3 主链路：
-//   A. 代理注册 / 登录
-//   B. 代理录入网吧资料 → status='pending'，platformAuditStatus='pending'，生成临时编号 P-XXXX
-//   C. 平台审核通过 → 进入 status='normal' + platformAuditStatus='approved'
-//   D. 代理线下铺设霸服 → setCafeLaunched 写入 launchedAt + 已活跃终端/流水
-//   E. 上线后展示终端规模、已活跃终端、月活、日活、本月流水
+//   A. 母账号 / 子账号通过账密登录
+//   B. 首次自助创建的母账号需平台审批；QQ 只做创号时一次鉴权
+//   C. 母账号录入网吧资料 → 一期免审核，系统自动分配 BF 网吧 ID + MC 系统 ID
+//   D. 母账号可创建子账号给子代理 / 网吧主，子账号数据自动关联母账号
+//   E. 上线后展示终端规模、已活跃终端、月活跃结算终端、日活、本月流水
 export type MyCafe = {
   id: string;
   tempId?: string;
@@ -77,6 +77,138 @@ export type MyCafe = {
 
 export const CURRENT_AGENT_ID = 'A2001';
 export const CURRENT_AGENT_NAME = '李建国';
+
+// =================== 结算策略 ===================
+export const MONTHLY_ACTIVE_TERMINAL_SETTLEMENT_UNIT_PRICE = 4;
+export const MONTHLY_ACTIVE_TERMINAL_ACTIVE_DAYS_THRESHOLD = 3;
+export const MONTHLY_ACTIVE_TERMINAL_SETTLEMENT_DESC = '单自然月内活跃 3 天及以上的终端，按 4 元 / 台 / 月结算';
+
+export function calculateMonthlyTerminalSettlement(monthlyActiveTerminal: number) {
+  return {
+    eligibleTerminalCount: monthlyActiveTerminal,
+    unitPrice: MONTHLY_ACTIVE_TERMINAL_SETTLEMENT_UNIT_PRICE,
+    amount: monthlyActiveTerminal * MONTHLY_ACTIVE_TERMINAL_SETTLEMENT_UNIT_PRICE,
+  };
+}
+
+// =================== 子母账号 ===================
+export type SettlementAccountType = 'parent' | 'child';
+export type ChildAccountRole = 'subAgent' | 'cafeOwner';
+
+export type SettlementAccount = {
+  accountId: string;
+  accountType: SettlementAccountType;
+  username: string;
+  password: string;                    // Demo 演示态：明文 mock；生产环境必须 hash 存储
+  displayName: string;
+  roleLabel: string;
+  parentAccountId?: string;
+  parentAgentId: string;
+  parentAgentName: string;
+  qqVerified: boolean;
+  authStatus: 'pending' | 'approved' | 'rejected';
+  terminalScope: 'parent_all' | 'inherited';
+  createdAt: string;
+  lastLoginAt?: string;
+};
+
+export const CURRENT_PARENT_ACCOUNT_ID = 'PA1001';
+
+const _settlementAccounts: SettlementAccount[] = [
+  {
+    accountId: CURRENT_PARENT_ACCOUNT_ID,
+    accountType: 'parent',
+    username: 'lijg',
+    password: '123456',
+    displayName: '李建国',
+    roleLabel: '母账号 / 代理负责人',
+    parentAgentId: CURRENT_AGENT_ID,
+    parentAgentName: CURRENT_AGENT_NAME,
+    qqVerified: true,
+    authStatus: 'approved',
+    terminalScope: 'parent_all',
+    createdAt: '2026-01-01',
+    lastLoginAt: '2026-06-08 09:20',
+  },
+  {
+    accountId: 'CA3001',
+    accountType: 'child',
+    username: 'sub_sz',
+    password: '123456',
+    displayName: '深圳子代理账号',
+    roleLabel: '子账号 / 子代理',
+    parentAccountId: CURRENT_PARENT_ACCOUNT_ID,
+    parentAgentId: CURRENT_AGENT_ID,
+    parentAgentName: CURRENT_AGENT_NAME,
+    qqVerified: false,
+    authStatus: 'approved',
+    terminalScope: 'inherited',
+    createdAt: '2026-06-02',
+    lastLoginAt: '2026-06-08 11:35',
+  },
+  {
+    accountId: 'CA3002',
+    accountType: 'child',
+    username: 'cafe_nanshan',
+    password: '123456',
+    displayName: '南山旗舰店查看账号',
+    roleLabel: '子账号 / 网吧主',
+    parentAccountId: CURRENT_PARENT_ACCOUNT_ID,
+    parentAgentId: CURRENT_AGENT_ID,
+    parentAgentName: CURRENT_AGENT_NAME,
+    qqVerified: false,
+    authStatus: 'approved',
+    terminalScope: 'inherited',
+    createdAt: '2026-06-05',
+    lastLoginAt: '2026-06-08 16:10',
+  },
+];
+
+let _childAccountSeq = 3002;
+
+export function getParentSettlementAccount(): SettlementAccount {
+  return _settlementAccounts.find((a) => a.accountId === CURRENT_PARENT_ACCOUNT_ID)!;
+}
+
+export function getChildAccountsByParent(parentAccountId = CURRENT_PARENT_ACCOUNT_ID): SettlementAccount[] {
+  return _settlementAccounts.filter((a) => a.accountType === 'child' && a.parentAccountId === parentAccountId);
+}
+
+export function loginSettlementAccount(username: string, password: string): { ok: boolean; account?: SettlementAccount; reason?: 'not_found' | 'pending' | 'rejected' } {
+  const account = _settlementAccounts.find((a) => a.username === username.trim() && a.password === password);
+  if (!account) return { ok: false, reason: 'not_found' };
+  if (account.authStatus === 'pending') return { ok: false, account, reason: 'pending' };
+  if (account.authStatus === 'rejected') return { ok: false, account, reason: 'rejected' };
+  account.lastLoginAt = dayjs().format('YYYY-MM-DD HH:mm');
+  return { ok: true, account };
+}
+
+export function createChildSettlementAccount(input: {
+  username: string;
+  password: string;
+  displayName: string;
+  role: ChildAccountRole;
+  parentAccountId?: string;
+}): SettlementAccount {
+  _childAccountSeq += 1;
+  const account: SettlementAccount = {
+    accountId: `CA${_childAccountSeq}`,
+    accountType: 'child',
+    username: input.username.trim(),
+    password: input.password,
+    displayName: input.displayName,
+    roleLabel: input.role === 'subAgent' ? '子账号 / 子代理' : '子账号 / 网吧主',
+    parentAccountId: input.parentAccountId || CURRENT_PARENT_ACCOUNT_ID,
+    parentAgentId: CURRENT_AGENT_ID,
+    parentAgentName: CURRENT_AGENT_NAME,
+    qqVerified: false,
+    authStatus: 'approved',
+    terminalScope: 'inherited',
+    createdAt: dayjs().format('YYYY-MM-DD'),
+  };
+  _settlementAccounts.unshift(account);
+  return account;
+}
 
 const _myCafes: MyCafe[] = [
   {
@@ -251,7 +383,10 @@ export function getPlatformAgentOverview() {
 // =================== 代理账号审核（一期由平台对代理注册申请做审核） ===================
 export type AgentApplication = {
   applicationId: string;          // AA-xxxx
-  qq: string;                     // QQ 号
+  accountName: string;            // 自定义登录名，审核通过后成为母账号
+  accountType: 'parent';          // 用户自行创建的账号一定是母账号
+  qq: string;                     // QQ 号，用于创号时一次鉴权
+  qqVerified: boolean;
   contact: string;                // 申请人姓名
   phone: string;
   province: string;
@@ -268,46 +403,89 @@ export type AgentApplication = {
 
 const _agentApplications: AgentApplication[] = [
   {
-    applicationId: 'AA-2031', qq: '882910xxx', contact: '陈志强', phone: '139****6612',
+    applicationId: 'AA-2031', accountName: 'czq_gz', accountType: 'parent', qq: '882910xxx', qqVerified: true, contact: '陈志强', phone: '139****6612',
     province: '广东', city: '广州', companyName: '志强网络科技工作室',
     idCardNo: '4401**********1234', bankAccount: '6217 **** **** 4521',
     submittedAt: '2026-06-07 14:32', reviewStatus: 'pending',
   },
   {
-    applicationId: 'AA-2030', qq: '519202xxx', contact: '林晓婷', phone: '186****3308',
+    applicationId: 'AA-2030', accountName: 'lxt_xm', accountType: 'parent', qq: '519202xxx', qqVerified: true, contact: '林晓婷', phone: '186****3308',
     province: '福建', city: '厦门', companyName: '晓婷文化传媒有限公司',
     idCardNo: '3502**********0826', bankAccount: '6225 **** **** 9032',
     submittedAt: '2026-06-07 11:08', reviewStatus: 'pending',
   },
   {
-    applicationId: 'AA-2029', qq: '460112xxx', contact: '黄建华', phone: '135****7741',
+    applicationId: 'AA-2029', accountName: 'hjh_hz', accountType: 'parent', qq: '460112xxx', qqVerified: true, contact: '黄建华', phone: '135****7741',
     province: '浙江', city: '杭州', companyName: '建华网咖管理有限公司',
     idCardNo: '3301**********5612', bankAccount: '6228 **** **** 1187',
     submittedAt: '2026-06-06 19:45', reviewStatus: 'pending',
   },
   // 历史已审核
   {
-    applicationId: 'AA-2028', qq: '120384xxx', contact: '赵伟', phone: '187****2245',
+    applicationId: 'AA-2028', accountName: 'zhaowei_wh', accountType: 'parent', qq: '120384xxx', qqVerified: true, contact: '赵伟', phone: '187****2245',
     province: '湖北', city: '武汉', companyName: '伟业网络服务工作室',
     idCardNo: '4201**********9981', bankAccount: '6226 **** **** 7714',
     submittedAt: '2026-06-05 09:12',
     reviewStatus: 'approved', reviewRemark: '资料齐全，已通过', reviewAt: '2026-06-05 16:40', reviewer: '审核员-A',
   },
   {
-    applicationId: 'AA-2027', qq: '991023xxx', contact: '孙小芳', phone: '152****8854',
+    applicationId: 'AA-2027', accountName: 'sxf_cd', accountType: 'parent', qq: '991023xxx', qqVerified: true, contact: '孙小芳', phone: '152****8854',
     province: '四川', city: '成都', companyName: '小芳电竞工作室',
     idCardNo: '5101**********4423', bankAccount: '6217 **** **** 6608',
     submittedAt: '2026-06-04 15:20',
     reviewStatus: 'approved', reviewRemark: '资质齐全', reviewAt: '2026-06-04 17:55', reviewer: '审核员-A',
   },
   {
-    applicationId: 'AA-2026', qq: '776205xxx', contact: '刘海洋', phone: '138****9913',
+    applicationId: 'AA-2026', accountName: 'lhy_nj', accountType: 'parent', qq: '776205xxx', qqVerified: true, contact: '刘海洋', phone: '138****9913',
     province: '江苏', city: '南京', companyName: '海洋数码科技工作室',
     idCardNo: '3201**********3142', bankAccount: '6228 **** **** 5527',
     submittedAt: '2026-06-03 10:44',
     reviewStatus: 'rejected', reviewRemark: '银行账户与身份证姓名不一致，请核对后重新提交', reviewAt: '2026-06-03 14:08', reviewer: '审核员-B',
   },
 ];
+
+export function submitParentAccountApplication(input: {
+  accountName: string;
+  password: string;
+  qq: string;
+  contact: string;
+  phone: string;
+  companyName: string;
+}): AgentApplication {
+  const seq = 2031 + _agentApplications.length + 1;
+  const application: AgentApplication = {
+    applicationId: `AA-${seq}`,
+    accountName: input.accountName.trim(),
+    accountType: 'parent',
+    qq: input.qq.replace(/(\d{3})\d+(\d{2})/, '$1****$2'),
+    qqVerified: true,
+    contact: input.contact,
+    phone: input.phone,
+    province: '广东',
+    city: '深圳',
+    companyName: input.companyName,
+    idCardNo: '待平台审核补充',
+    bankAccount: '待平台审核补充',
+    submittedAt: dayjs().format('YYYY-MM-DD HH:mm'),
+    reviewStatus: 'pending',
+  };
+  _agentApplications.unshift(application);
+  _settlementAccounts.unshift({
+    accountId: `PA${seq}`,
+    accountType: 'parent',
+    username: input.accountName.trim(),
+    password: input.password,
+    displayName: input.contact,
+    roleLabel: '母账号 / 待平台审批',
+    parentAgentId: `A${seq}`,
+    parentAgentName: input.contact,
+    qqVerified: true,
+    authStatus: 'pending',
+    terminalScope: 'parent_all',
+    createdAt: dayjs().format('YYYY-MM-DD'),
+  });
+  return application;
+}
 
 export function getPendingAgentApplications(): AgentApplication[] {
   return _agentApplications.filter((a) => a.reviewStatus === 'pending');
@@ -322,6 +500,11 @@ export function reviewAgentApprove(applicationId: string, remark?: string, revie
   a.reviewRemark = remark || '资料齐全，审核通过';
   a.reviewAt = dayjs().format('YYYY-MM-DD HH:mm');
   a.reviewer = reviewer;
+  const account = _settlementAccounts.find((x) => x.username === a.accountName && x.accountType === 'parent');
+  if (account) {
+    account.authStatus = 'approved';
+    account.roleLabel = '母账号 / 代理负责人';
+  }
   return { ok: true };
 }
 export function reviewAgentReject(applicationId: string, remark: string, reviewer = '审核员-A'): { ok: boolean } {
@@ -331,6 +514,8 @@ export function reviewAgentReject(applicationId: string, remark: string, reviewe
   a.reviewRemark = remark;
   a.reviewAt = dayjs().format('YYYY-MM-DD HH:mm');
   a.reviewer = reviewer;
+  const account = _settlementAccounts.find((x) => x.username === a.accountName && x.accountType === 'parent');
+  if (account) account.authStatus = 'rejected';
   return { ok: true };
 }
 
@@ -489,11 +674,11 @@ export function summarizeCafes(cafes: MyCafe[]): CafeScaleSummary {
 }
 
 export const recentFeed = [
-  { time: '6/01 10:12', type: 'info', content: '代理提交「星辰电竞·福田 COCO PARK 店」录入申请，待平台审核' },
-  { time: '5/29 16:20', type: 'success', content: '「星辰电竞·盐田店」资料审核通过，待代理安排铺设' },
+  { time: '6/08 11:35', type: 'success', content: '子账号「sub_sz」登录结算平台，数据自动关联母账号' },
+  { time: '6/08 09:20', type: 'info', content: '母账号「lijg」查看月活跃终端结算字段' },
+  { time: '6/02 15:16', type: 'success', content: '母账号创建「深圳子代理账号」，可直接账密登录' },
   { time: '5/25 14:00', type: 'success', content: '代理完成「星辰电竞·龙华店」霸服铺设，已活跃终端数据开始回传' },
-  { time: '5/12 11:20', type: 'success', content: '门店「星辰电竞·南山旗舰店」月活终端突破 100 台' },
-  { time: '5/10 16:00', type: 'warning', content: '门店「星辰电竞·罗湖店」当日活跃终端较上周下降 12%' },
+  { time: '5/12 11:20', type: 'success', content: '门店「星辰电竞·南山旗舰店」月活跃结算终端突破 100 台' },
 ];
 
 // =================== 个人信息 ===================
