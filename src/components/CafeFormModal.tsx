@@ -1,5 +1,6 @@
-import { Modal, Form, Input, InputNumber, Cascader, Row, Col, Alert, message } from 'antd';
-import { provinceCityOptions, addMyCafe } from '../mock/data';
+import { useEffect, useState } from 'react';
+import { Modal, Form, Input, InputNumber, Cascader, Row, Col, Alert, Typography, message } from 'antd';
+import { provinceCityOptions, generateCafeLoginAccount, addMyCafe } from '../mock/data';
 
 export type CafeFormModalProps = {
   open: boolean;
@@ -7,15 +8,27 @@ export type CafeFormModalProps = {
   onSuccess?: () => void;
 };
 
-// 网吧录入弹窗：代理提交网吧基本资料。
-// 一期方案：录入即生效（无需平台审核）；网吧 ID 由系统自动生成（BF + 8 位数字），
-// 代理只需填写名称、地区、地址、终端规模、联系人、网吧密码（6+ 位）。
+const { Text } = Typography;
+
 export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModalProps) {
   const [form] = Form.useForm();
+  const [generatedAccount, setGeneratedAccount] = useState('');
+
+  useEffect(() => {
+    if (open) setGeneratedAccount(generateCafeLoginAccount());
+  }, [open]);
+
+  const resetAndClose = () => {
+    form.resetFields();
+    setGeneratedAccount('');
+    onClose();
+  };
 
   const onOk = async () => {
     const v = await form.validateFields();
+    const loginAccount = generatedAccount || generateCafeLoginAccount();
     const cafe = addMyCafe({
+      externalCafeId: loginAccount,
       name: v.name,
       province: v.region[0],
       city: v.region[1],
@@ -26,9 +39,8 @@ export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModa
       phone: v.phone,
       cafePassword: v.cafePassword,
     });
-    message.success(`录入成功！系统已分配网吧 ID：${cafe.externalCafeId}（系统编号 ${cafe.id}），请安排线下铺设。`);
-    form.resetFields();
-    onClose();
+    message.success(`录入成功：无盘账号 ${cafe.externalCafeId}`);
+    resetAndClose();
     onSuccess?.();
   };
 
@@ -37,18 +49,26 @@ export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModa
       title="录入网吧"
       open={open}
       onOk={onOk}
-      onCancel={() => { form.resetFields(); onClose(); }}
+      onCancel={resetAndClose}
       okText="确认录入"
       cancelText="取消"
-      width={640}
+      width={680}
       destroyOnClose
     >
-      <Alert
-        type="info" showIcon style={{ marginBottom: 16 }}
-        message="录入即生效，可立即安排线下铺设"
-        description="网吧 ID 将由系统自动生成（无需手动填写）。请妥善保管下方设置的网吧密码，用于后续在霸服终端登录。"
-      />
       <Form form={form} layout="vertical" requiredMark style={{ marginTop: 4 }}>
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="网吧ID即霸服无盘系统登录账号"
+          description="账号由系统在录入网吧时自动生成，配合下方设置的无盘系统登录密码即可登录霸服无盘系统。"
+        />
+
+        <Form.Item label="网吧ID / 无盘账号">
+          <Input value={generatedAccount} readOnly placeholder="系统自动生成" />
+          <Text type="secondary" style={{ fontSize: 12 }}>该账号无需手动选择或填写，确认录入后生效。</Text>
+        </Form.Item>
+
         <Form.Item label="网吧名称" name="name" rules={[{ required: true, message: '请输入网吧名称' }]}>
           <Input placeholder="如：星辰电竞·南山旗舰店" />
         </Form.Item>
@@ -57,7 +77,7 @@ export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModa
           <Cascader options={provinceCityOptions} placeholder="请选择省份 / 城市" />
         </Form.Item>
 
-        <Form.Item label="详细地址" name="address" rules={[{ required: true, message: '请填写详细地址' }]} extra="需具体到门牌号或楼层">
+        <Form.Item label="详细地址" name="address" rules={[{ required: true, message: '请填写详细地址' }]}>
           <Input placeholder="如：南山区科技园南路 88 号 3 楼" />
         </Form.Item>
 
@@ -67,7 +87,6 @@ export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModa
               label="终端规模数（台）"
               name="terminalScaleCount"
               rules={[{ required: true, message: '请输入终端规模数' }]}
-              extra="代理人工录入，可后续编辑"
             >
               <InputNumber min={1} max={5000} style={{ width: '100%' }} placeholder="如 100" />
             </Form.Item>
@@ -85,15 +104,14 @@ export default function CafeFormModal({ open, onClose, onSuccess }: CafeFormModa
         </Row>
 
         <Form.Item
-          label="网吧密码"
+          label="无盘系统登录密码"
           name="cafePassword"
           rules={[
-            { required: true, message: '请设置网吧密码' },
+            { required: true, message: '请设置无盘系统登录密码' },
             { min: 6, message: '密码至少 6 位' },
             { max: 32, message: '密码最长 32 位' },
             { pattern: /^[\x21-\x7e]+$/, message: '仅支持英文字母、数字与常用符号' },
           ]}
-          extra="6 位以上，用于在霸服终端登录该网吧。请妥善保管。"
         >
           <Input.Password placeholder="请输入 6 位以上密码" autoComplete="new-password" />
         </Form.Item>

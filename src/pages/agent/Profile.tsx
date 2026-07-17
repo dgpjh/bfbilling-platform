@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import {
   Card, Row, Col, Tag, Descriptions, Button, Space, Avatar, Typography,
-  message, Modal, Form, Input, Tooltip,
+  message, Modal, Form, Input,
 } from 'antd';
 import {
-  IdcardOutlined, UserOutlined, PhoneOutlined, MailOutlined,
-  EnvironmentOutlined, SafetyCertificateOutlined,
-  CopyOutlined, EditOutlined, CheckCircleFilled,
+  UserOutlined, PhoneOutlined, MailOutlined,
+  EnvironmentOutlined, CopyOutlined, EditOutlined, IdcardOutlined,
 } from '@ant-design/icons';
 import {
   getMyProfile,
@@ -29,7 +28,6 @@ function SectionTitle({ icon, text, extra }: { icon: React.ReactNode; text: stri
 
 export default function AgentProfile() {
   const [profile, setProfile] = useState<AccountProfile>(() => ({ ...getMyProfile() }));
-
   const [editOpen, setEditOpen] = useState(false);
   const [form] = Form.useForm();
 
@@ -59,19 +57,13 @@ export default function AgentProfile() {
         <Row align="middle" gutter={24}>
           <Col flex="none">
             <Avatar size={72} style={{ background: '#FF2E3E', fontSize: 30 }}>
-              {profile.realName.slice(0, 1)}
+              {profile.contact.slice(0, 1)}
             </Avatar>
           </Col>
           <Col flex="auto">
             <Space size={10} align="center" wrap>
-              <Title level={4} style={{ color: '#fff', margin: 0 }}>{profile.realName}</Title>
-              <Tag color="red">代理</Tag>
-              <Tag color={profile.subjectType === 'company' ? 'geekblue' : 'cyan'}>
-                {profile.subjectType === 'company' ? '企业主体' : '个人主体'}
-              </Tag>
-              {profile.authStatus === 'verified' && (
-                <Tag icon={<CheckCircleFilled />} color="success">已实名认证</Tag>
-              )}
+              <Title level={4} style={{ color: '#fff', margin: 0 }}>{profile.contact}</Title>
+              <Tag color="red">代理商</Tag>
             </Space>
             <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
               <Text style={{ color: 'rgba(255,255,255,0.55)' }}>代理 ID</Text>
@@ -84,9 +76,7 @@ export default function AgentProfile() {
               >
                 {profile.roleId}
               </Text>
-              <Tooltip title="复制代理 ID（用于对账、客服核验、运营查询）">
-                <Button size="small" type="text" icon={<CopyOutlined style={{ color: '#FFD66B' }} />} onClick={copyRoleId} />
-              </Tooltip>
+              <Button size="small" type="text" icon={<CopyOutlined style={{ color: '#FFD66B' }} />} onClick={copyRoleId} />
             </div>
             <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
               注册时间：{profile.registeredAt}
@@ -95,46 +85,19 @@ export default function AgentProfile() {
         </Row>
       </Card>
 
-      <Row gutter={16}>
-        <Col xs={24} lg={12}>
-          <Card
-            style={{ background: '#1A1212', border: '1px solid #2A1A1C', marginBottom: 16 }}
-            title={<SectionTitle icon={<IdcardOutlined style={{ color: '#FF6B6B' }} />} text="实名信息" extra={<Tag color="default" style={{ marginRight: 0 }}>校验回填 · 不可改</Tag>} />}
-          >
-            <Descriptions column={1} size="middle" labelStyle={{ color: 'rgba(255,255,255,0.45)', width: 110 }} contentStyle={{ color: 'rgba(255,255,255,0.9)' }}>
-              <Descriptions.Item label="姓名">{profile.realName}</Descriptions.Item>
-              <Descriptions.Item label="身份证号">{profile.idCard}</Descriptions.Item>
-              {profile.subjectType === 'company' && (
-                <>
-                  <Descriptions.Item label="企业名称">{profile.companyName}</Descriptions.Item>
-                  <Descriptions.Item label="信用代码">{profile.creditCode}</Descriptions.Item>
-                </>
-              )}
-              <Descriptions.Item label={<Space size={4}><SafetyCertificateOutlined />认证状态</Space>}>
-                {profile.authStatus === 'verified'
-                  ? <Tag icon={<CheckCircleFilled />} color="success">已通过资质审核</Tag>
-                  : <Tag color="warning">审核中</Tag>}
-              </Descriptions.Item>
-            </Descriptions>
-          </Card>
-        </Col>
-
-        <Col xs={24} lg={12}>
-          <Card
-            style={{ background: '#1A1212', border: '1px solid #2A1A1C', marginBottom: 16 }}
-            title={<SectionTitle icon={<PhoneOutlined style={{ color: '#4ECDC4' }} />} text="联系方式" extra={<Button size="small" type="link" icon={<EditOutlined />} onClick={openEdit}>编辑</Button>} />}
-          >
-            <Descriptions column={1} size="middle" labelStyle={{ color: 'rgba(255,255,255,0.45)', width: 110 }} contentStyle={{ color: 'rgba(255,255,255,0.9)' }}>
-              <Descriptions.Item label={<Space size={4}><UserOutlined />联系人</Space>}>{profile.contact}</Descriptions.Item>
-              <Descriptions.Item label={<Space size={4}><PhoneOutlined />手机号</Space>}>{profile.phone}</Descriptions.Item>
-              <Descriptions.Item label={<Space size={4}><MailOutlined />邮箱</Space>}>{profile.email}</Descriptions.Item>
-              <Descriptions.Item label={<Space size={4}><EnvironmentOutlined />联系地址</Space>}>
-                {profile.province} {profile.city} {profile.address}
-              </Descriptions.Item>
-            </Descriptions>
-          </Card>
-        </Col>
-      </Row>
+      <Card
+        style={{ background: '#1A1212', border: '1px solid #2A1A1C', marginBottom: 16 }}
+        title={<SectionTitle icon={<UserOutlined style={{ color: '#4ECDC4' }} />} text="个人信息" extra={<Button size="small" type="link" icon={<EditOutlined />} onClick={openEdit}>编辑</Button>} />}
+      >
+        <Descriptions column={1} size="middle" labelStyle={{ color: 'rgba(255,255,255,0.45)', width: 110 }} contentStyle={{ color: 'rgba(255,255,255,0.9)' }}>
+          <Descriptions.Item label={<Space size={4}><UserOutlined />姓名</Space>}>{profile.contact}</Descriptions.Item>
+          <Descriptions.Item label={<Space size={4}><PhoneOutlined />电话</Space>}>{profile.phone}</Descriptions.Item>
+          <Descriptions.Item label={<Space size={4}><EnvironmentOutlined />地区</Space>}>{profile.province} {profile.city}</Descriptions.Item>
+          <Descriptions.Item label={<Space size={4}><EnvironmentOutlined />地址</Space>}>{profile.address}</Descriptions.Item>
+          <Descriptions.Item label={<Space size={4}><IdcardOutlined />身份证实名</Space>}>{profile.idCardNo}</Descriptions.Item>
+          <Descriptions.Item label={<Space size={4}><MailOutlined />邮箱</Space>}>{profile.email}</Descriptions.Item>
+        </Descriptions>
+      </Card>
 
       <Modal
         title="编辑联系方式"
@@ -155,9 +118,6 @@ export default function AgentProfile() {
           <Form.Item name="address" label="详细联系地址" rules={[{ required: true, message: '请输入联系地址' }]}>
             <Input prefix={<EnvironmentOutlined />} placeholder="请输入详细地址" />
           </Form.Item>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            提示：实名信息涉及资质审核，如需变更请联系运营客服并重新提交认证。
-          </Text>
         </Form>
       </Modal>
     </div>

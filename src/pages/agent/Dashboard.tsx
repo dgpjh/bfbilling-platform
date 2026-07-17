@@ -1,6 +1,6 @@
 // ===========================================================================
 // 概览首页（v3 代理单角色版）
-// 聚焦：代理身份、网吧录入审核、待铺设 TODO、终端规模/活跃/流水。
+// 聚焦：代理身份、网吧录入审核、待铺设 TODO、终端规模/活跃。
 // ===========================================================================
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -9,7 +9,6 @@ import {
 } from 'antd';
 import {
   ShopOutlined, DesktopOutlined, ThunderboltOutlined,
-  DollarCircleOutlined,
   CrownOutlined, CheckCircleFilled,
   HourglassOutlined, ArrowRightOutlined, PlusOutlined,
 } from '@ant-design/icons';
@@ -17,16 +16,13 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   agentInfo,
   CURRENT_AGENT_ID,
-  MONTHLY_ACTIVE_TERMINAL_ACTIVE_DAYS_THRESHOLD,
-  MONTHLY_ACTIVE_TERMINAL_SETTLEMENT_DESC,
-  calculateMonthlyTerminalSettlement,
   getCafesByAgent,
   summarizeCafes,
   type MyCafe,
 } from '../../mock/data';
 import CafeFormModal from '../../components/CafeFormModal';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -52,7 +48,6 @@ export default function Dashboard() {
     ? (summary.monthlyActiveTerminal / summary.terminalScaleCount) * 100 : 0;
   const dailyActiveRate = summary.terminalScaleCount > 0
     ? (summary.dailyActiveTerminal / summary.terminalScaleCount) * 100 : 0;
-  const terminalSettlement = calculateMonthlyTerminalSettlement(summary.monthlyActiveTerminal);
 
   return (
     <div>
@@ -74,9 +69,7 @@ export default function Dashboard() {
               <Title level={4} style={{ margin: 0, color: '#fff' }}>{agentInfo.name}</Title>
               <Tag color="red" style={{ marginRight: 0 }}>代理</Tag>
               <Tag color="default" style={{ marginRight: 0 }}>角色 ID：{CURRENT_AGENT_ID}</Tag>
-              <Tag color="default" style={{ marginRight: 0 }}>
-                <CheckCircleFilled style={{ color: '#52C41A' }} /> 已实名
-              </Tag>
+
             </Space>
             <div style={{ marginTop: 8, color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>
               当前录入 <Text strong style={{ color: '#FFD66B' }}>{summary.cafeCount}</Text> 家网吧 · 已上线 <Text strong style={{ color: '#FFD66B' }}>{summary.launchedCafeCount}</Text> 家 · 终端规模 <Text strong style={{ color: '#FFD66B' }}>{summary.terminalScaleCount}</Text> 台 · 已活跃 <Text strong style={{ color: '#FFD66B' }}>{summary.terminalCount}</Text> 台 · 入驻于 {agentInfo.startDate}
@@ -93,57 +86,34 @@ export default function Dashboard() {
       {summary.pendingLaunchCount > 0 && (
         <Alert
           type="warning" showIcon style={{ marginBottom: 16 }}
-          message={`你有 ${summary.pendingLaunchCount} 家网吧待铺设霸服系统`}
-          description="请尽快完成线下铺设；铺设完成后才会有终端 / 活跃 / 流水数据回传。"
-          action={<Button size="small" type="primary" onClick={() => navigate('/agent/my-cafes')}>去处理 <ArrowRightOutlined /></Button>}
+          message={`${summary.pendingLaunchCount} 家网吧待铺设`}
+          action={<Button size="small" type="primary" onClick={() => navigate('/agent/my-cafes')}>查看 <ArrowRightOutlined /></Button>}
         />
       )}
 
       <Card
-        style={{ background: 'linear-gradient(135deg, rgba(255,214,107,0.12) 0%, #1A1212 100%)', border: '1px solid rgba(255,214,107,0.35)', marginBottom: 16 }}
+        style={{ background: '#1A1212', border: '1px solid #2A1A1C', marginBottom: 16 }}
         styles={{ body: { padding: 18 } }}
       >
         <Row gutter={16} align="middle">
-          <Col xs={24} lg={10}>
-            <Space direction="vertical" size={4}>
-              <Space wrap>
-                <Tag color="gold">已拍定结算口径</Tag>
-                <Text strong style={{ color: '#fff' }}>月活跃终端数结算</Text>
-              </Space>
-              <Text style={{ color: 'rgba(255,255,255,0.62)' }}>
-                {MONTHLY_ACTIVE_TERMINAL_SETTLEMENT_DESC}，当前首页按该字段预估本月结算。
-              </Text>
-            </Space>
+          <Col xs={24} lg={12}>
+            <Text strong style={{ color: '#fff' }}>月活跃终端</Text>
           </Col>
-          <Col xs={8} lg={4}>
+          <Col xs={24} lg={6}>
             <Statistic
-              title={<span style={{ color: 'rgba(255,255,255,0.65)' }}>月活跃结算终端</span>}
-              value={terminalSettlement.eligibleTerminalCount}
+              title={<span style={{ color: 'rgba(255,255,255,0.65)' }}>月活跃终端</span>}
+              value={summary.monthlyActiveTerminal}
               suffix="台"
-              valueStyle={{ color: '#FFD66B', fontWeight: 700 }}
+              valueStyle={{ color: '#52C41A', fontWeight: 700 }}
             />
           </Col>
-          <Col xs={8} lg={4}>
+          <Col xs={24} lg={6}>
             <Statistic
-              title={<span style={{ color: 'rgba(255,255,255,0.65)' }}>单台单月</span>}
-              value={terminalSettlement.unitPrice}
-              prefix="¥"
-              valueStyle={{ color: '#FFD66B', fontWeight: 700 }}
+              title={<span style={{ color: 'rgba(255,255,255,0.65)' }}>占终端规模</span>}
+              value={Number(monthlyActiveRate.toFixed(1))}
+              suffix="%"
+              valueStyle={{ color: '#52C41A', fontWeight: 700 }}
             />
-          </Col>
-          <Col xs={8} lg={4}>
-            <Statistic
-              title={<span style={{ color: 'rgba(255,255,255,0.65)' }}>预估结算金额</span>}
-              value={terminalSettlement.amount}
-              prefix="¥"
-              groupSeparator=","
-              valueStyle={{ color: '#FFD66B', fontWeight: 700 }}
-            />
-          </Col>
-          <Col xs={24} lg={2}>
-            <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>
-              ≥{MONTHLY_ACTIVE_TERMINAL_ACTIVE_DAYS_THRESHOLD} 天
-            </Text>
           </Col>
         </Row>
       </Card>
@@ -170,7 +140,7 @@ export default function Dashboard() {
               suffix="台"
               valueStyle={{ color: '#FAAD14', fontSize: 32, fontWeight: 700 }}
             />
-            <div style={{ marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>代理人工维护的终端规模总数</div>
+
           </Card>
         </Col>
         <Col xs={12} md={6}>
@@ -182,20 +152,19 @@ export default function Dashboard() {
               valueStyle={{ color: '#52C41A', fontSize: 32, fontWeight: 700 }}
             />
             <div style={{ marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-              月活跃结算终端 {summary.monthlyActiveTerminal} 台 · 日活 {summary.dailyActiveTerminal} 台 · 活跃率 {monthlyActiveRate.toFixed(1)}%
+月活跃 {summary.monthlyActiveTerminal} 台 · 日活 {summary.dailyActiveTerminal} 台 · 活跃率 {monthlyActiveRate.toFixed(1)}%
             </div>
           </Card>
         </Col>
         <Col xs={12} md={6}>
           <Card style={{ background: '#1A1212', border: '1px solid #2A1A1C' }}>
             <Statistic
-              title={<Space><DollarCircleOutlined style={{ color: '#FFD66B' }} /><span style={{ color: 'rgba(255,255,255,0.65)' }}>本月流水</span></Space>}
-              value={summary.monthRevenue}
-              prefix="¥"
-              valueStyle={{ color: '#FFD66B', fontSize: 32, fontWeight: 700 }}
-              groupSeparator=","
+              title={<Space><CheckCircleFilled style={{ color: '#1890FF' }} /><span style={{ color: 'rgba(255,255,255,0.65)' }}>已上线网吧</span></Space>}
+              value={summary.launchedCafeCount}
+              suffix="家"
+              valueStyle={{ color: '#1890FF', fontSize: 32, fontWeight: 700 }}
             />
-            <div style={{ marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>代理名下所有已上线网吧流水汇总</div>
+            <div style={{ marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>已上线</div>
           </Card>
         </Col>
       </Row>
@@ -216,7 +185,7 @@ export default function Dashboard() {
           <Space direction="vertical" size={20} style={{ width: '100%' }}>
             <div>
               <Row justify="space-between" style={{ marginBottom: 6 }}>
-                <Text style={{ color: 'rgba(255,255,255,0.75)' }}>月活终端</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.75)' }}>月活跃终端</Text>
                 <Text strong style={{ color: '#52C41A' }}>
                   {summary.monthlyActiveTerminal} / {summary.terminalScaleCount} 台
                 </Text>
@@ -232,9 +201,7 @@ export default function Dashboard() {
               </Row>
               <Progress percent={Number(dailyActiveRate.toFixed(1))} strokeColor={{ '0%': '#1890FF', '100%': '#40A9FF' }} trailColor="#2A1A1C" />
             </div>
-            <Paragraph style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, margin: 0 }}>
-              月活跃结算终端 = 单自然月内活跃 3 天及以上终端数；日活率 = 当日有过活跃记录的终端数 / 代理维护的终端规模。
-            </Paragraph>
+
           </Space>
         )}
       </Card>

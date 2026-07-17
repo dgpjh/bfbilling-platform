@@ -1,24 +1,17 @@
-// ===========================================================================
-// 网吧管理（v3 代理单角色版）
-// 代理直接录入网吧、查看平台审核状态、执行铺设上线、删除门店。
-// ===========================================================================
 import { useMemo, useState } from 'react';
-import dayjs, { type Dayjs } from 'dayjs';
 import {
   Table, Button, Card, Tag, Space, Row, Col, Empty, Alert, Badge, List,
   Modal, Input, InputNumber, Typography, message, Descriptions, Statistic, Progress,
-  Tooltip, Form, Select, DatePicker,
+  Form,
 } from 'antd';
 import {
   PlusOutlined, ShopOutlined, DeleteOutlined, ExclamationCircleFilled,
-  DesktopOutlined, RiseOutlined, ThunderboltOutlined, WarningFilled,
-  HourglassOutlined, CheckCircleOutlined, CloseCircleOutlined,
-  BarChartOutlined, FileExcelOutlined,
+  DesktopOutlined, ThunderboltOutlined, WarningFilled,
+  HourglassOutlined, CheckCircleOutlined,
 } from '@ant-design/icons';
 import {
   getCafesByAgent,
   getPendingLaunchCafesForAgent,
-  getAgentDailyRevenueRecords,
   setCafeLaunched,
   deleteCafe,
   updateCafeInfo,
@@ -41,50 +34,14 @@ export default function MyCafes() {
   void tick;
 
   const [cafeFormOpen, setCafeFormOpen] = useState(false);
+  const [detailModal, setDetailModal] = useState<MyCafe | null>(null);
   const [editModal, setEditModal] = useState<MyCafe | null>(null);
   const [editForm] = Form.useForm();
-  const [revenueQueryOpen, setRevenueQueryOpen] = useState(false);
-  const [selectedCafeIds, setSelectedCafeIds] = useState<string[]>([]);
-  // 历史流水时间范围（与 mock 业务时点对齐：默认近 30 天，锚点 2026-06-08）
-  const MOCK_TODAY = dayjs('2026-06-08');
-  const [revenueDateRange, setRevenueDateRange] = useState<[Dayjs, Dayjs]>(
-    [MOCK_TODAY.subtract(29, 'day'), MOCK_TODAY],
-  );
   const [deleteModal, setDeleteModal] = useState<MyCafe | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const cafes = getCafesByAgent(CURRENT_AGENT_ID);
   const summary = useMemo(() => summarizeCafes(cafes), [cafes, tick]);
-  const monthlyActiveRate = summary.terminalCount > 0
-    ? (summary.monthlyActiveTerminal / summary.terminalCount) * 100 : 0;
   const pendingLaunchCafes = getPendingLaunchCafesForAgent(CURRENT_AGENT_ID);
-  // 已上线网吧（用于历史流水查询的可选范围）
-  const launchedCafes = useMemo(
-    () => cafes.filter((c) => !!c.launchedAt && !!c.id),
-    [cafes, tick],
-  );
-  // 历史流水查询：按筛选过滤后的记录（默认全部）
-  const revenueQueryRecords = useMemo(() => {
-    if (!revenueQueryOpen) return [];
-    const all = getAgentDailyRevenueRecords(CURRENT_AGENT_ID, 90);
-    const [from, to] = revenueDateRange;
-    const fromStr = from.format('YYYY-MM-DD');
-    const toStr = to.format('YYYY-MM-DD');
-    const set = selectedCafeIds.length > 0 ? new Set(selectedCafeIds) : null;
-    return all.filter((r) => {
-      if (r.date < fromStr || r.date > toStr) return false;
-      if (set && !set.has(r.cafeId)) return false;
-      return true;
-    });
-  }, [revenueQueryOpen, selectedCafeIds, revenueDateRange, tick]);
-  // 汇总统计
-  const revenueQuerySummary = useMemo(() => {
-    const recordCount = revenueQueryRecords.length;
-    const totalRevenue = revenueQueryRecords.reduce((s, r) => s + r.revenue, 0);
-    // 日均：按"涉及天数"分母（不同网吧同日只算一天）
-    const days = new Set(revenueQueryRecords.map((r) => r.date)).size || 1;
-    const dailyAvg = Math.round(totalRevenue / days);
-    return { recordCount, totalRevenue, dailyAvg };
-  }, [revenueQueryRecords]);
 
   const openEdit = (cafe: MyCafe) => {
     editForm.setFieldsValue({
@@ -134,7 +91,7 @@ export default function MyCafes() {
 
   const columns = [
     {
-      title: '网吧 ID', dataIndex: 'externalCafeId', width: 150,
+      title: '网吧ID / 无盘账号', dataIndex: 'externalCafeId', width: 170,
       render: (v: string) => <Tag color="blue">{v}</Tag>,
     },
     {
@@ -166,11 +123,9 @@ export default function MyCafes() {
       render: (_: any, r: MyCafe) => r.launchedAt ? <span>{r.dailyActiveTerminal} 台</span> : <Text type="secondary">—</Text>,
     },
     {
-      title: '月活跃结算终端 / 比例', key: 'monthly', width: 230,
+      title: '月活跃终端 / 比例', key: 'monthly', width: 210,
       render: (_: any, r: MyCafe) => {
-        if (!r.launchedAt) {
-          return <Text type="secondary" style={{ fontSize: 12 }}>—</Text>;
-        }
+        if (!r.launchedAt) return <Text type="secondary" style={{ fontSize: 12 }}>—</Text>;
         const rate = r.terminalScaleCount > 0 ? (r.monthlyActiveTerminal / r.terminalScaleCount) * 100 : 0;
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -183,13 +138,6 @@ export default function MyCafes() {
             </span>
           </div>
         );
-      },
-    },
-    {
-      title: '本月流水', dataIndex: 'monthRevenue', width: 130, align: 'right' as const,
-      render: (_: any, r: MyCafe) => {
-        if (!r.launchedAt) return <Text type="secondary">—</Text>;
-        return <span className="money">¥ {r.monthRevenue.toLocaleString()}</span>;
       },
     },
     {
@@ -211,7 +159,7 @@ export default function MyCafes() {
         const canLaunch = !r.launchedAt;
         return (
           <Space>
-            <a>详情</a>
+            <a onClick={() => setDetailModal(r)}>详情</a>
             <a onClick={() => openEdit(r)}>编辑</a>
             {canLaunch && (
               <a style={{ color: '#FAAD14' }} onClick={() => {
@@ -233,32 +181,19 @@ export default function MyCafes() {
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ margin: 0 }}>网吧管理</h2>
-        <Space>
-          <Button icon={<BarChartOutlined />} onClick={() => setRevenueQueryOpen(true)}>历史流水查询</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCafeFormOpen(true)}>录入网吧</Button>
-        </Space>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCafeFormOpen(true)}>录入网吧</Button>
       </div>
 
-      <Alert
-        type="info" showIcon style={{ marginBottom: 16 }}
-        message="代理主链路：录入网吧（系统自动分配 ID） → 代理铺设霸服上线 → 数据回传展示"
-      />
-
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col xs={12} md={6}>
+        <Col xs={12} md={8}>
           <Card><Statistic title={<Space><ShopOutlined /> 已录入网吧</Space>} value={summary.cafeCount} suffix="家" /></Card>
         </Col>
-        <Col xs={12} md={6}>
+        <Col xs={12} md={8}>
           <Card><Statistic title={<Space><DesktopOutlined /> 终端规模</Space>} value={summary.terminalScaleCount} suffix="台" /></Card>
         </Col>
-        <Col xs={12} md={6}>
+        <Col xs={12} md={8}>
           <Card style={{ borderLeft: '3px solid #FAAD14' }}>
             <Statistic title={<Space><ThunderboltOutlined /> 待铺设</Space>} value={summary.pendingLaunchCount} suffix="家" valueStyle={{ color: '#FAAD14' }} />
-          </Card>
-        </Col>
-        <Col xs={12} md={6}>
-          <Card>
-            <Statistic title={<Space><RiseOutlined /> 本月流水</Space>} value={summary.monthRevenue} prefix="¥" groupSeparator="," />
           </Card>
         </Col>
       </Row>
@@ -266,7 +201,7 @@ export default function MyCafes() {
       {pendingLaunchCafes.length > 0 && (
         <Card
           style={{ marginBottom: 16, borderLeft: '3px solid #FAAD14' }}
-          title={<Space><Badge count={pendingLaunchCafes.length} style={{ backgroundColor: '#FAAD14' }} /><span style={{ fontSize: 16, fontWeight: 600 }}>⏳ 待铺设网吧（请尽快线下铺设霸服系统）</span></Space>}
+          title={<Space><Badge count={pendingLaunchCafes.length} style={{ backgroundColor: '#FAAD14' }} /><span style={{ fontSize: 16, fontWeight: 600 }}>⏳ 待铺设网吧</span></Space>}
         >
           <List
             dataSource={pendingLaunchCafes}
@@ -309,139 +244,39 @@ export default function MyCafes() {
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setCafeFormOpen(true)}>录入网吧</Button>
           </Empty>
         ) : (
-          <Table rowKey={(r) => r.id || r.tempId || r.name} columns={columns} dataSource={cafes} scroll={{ x: 1300 }} pagination={{ pageSize: 10 }} />
+          <Table rowKey={(r) => r.id || r.tempId || r.name} columns={columns} dataSource={cafes} scroll={{ x: 1200 }} pagination={{ pageSize: 10 }} />
         )}
       </Card>
 
       <CafeFormModal open={cafeFormOpen} onClose={() => setCafeFormOpen(false)} onSuccess={refresh} />
 
       <Modal
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 36 }}>
-            <Space><BarChartOutlined /> <span>历史流水查询</span></Space>
-            <Button
-              type="primary"
-              ghost
-              size="small"
-              icon={<FileExcelOutlined />}
-              disabled={revenueQueryRecords.length === 0}
-              onClick={() => {
-                const scope = selectedCafeIds.length === 0
-                  ? `全部 ${launchedCafes.length} 家网吧`
-                  : `${selectedCafeIds.length} 家网吧`;
-                const hide = message.loading(`正在导出（${scope} · ${revenueQueryRecords.length} 条记录）...`, 0);
-                setTimeout(() => {
-                  hide();
-                  message.success(`Excel 文件已生成（Demo 演示，未实际下载）`);
-                }, 1200);
-              }}
-            >
-              导出 Excel
-            </Button>
-          </div>
-        }
-        open={revenueQueryOpen}
-        onCancel={() => setRevenueQueryOpen(false)}
-        footer={null}
-        width={1080}
-        destroyOnClose
+        title={detailModal ? `网吧信息：${detailModal.name}` : '网吧信息'}
+        open={!!detailModal}
+        onCancel={() => setDetailModal(null)}
+        footer={<Button type="primary" onClick={() => setDetailModal(null)}>关闭</Button>}
+        width={640}
       >
-        <Space style={{ marginBottom: 12, width: '100%' }} wrap>
-          <span style={{ color: 'rgba(0,0,0,0.65)' }}>网吧筛选：</span>
-          <Select
-            mode="multiple"
-            allowClear
-            showSearch
-            placeholder="不选 = 全部网吧（支持名称 / 网吧 ID 模糊搜索）"
-            style={{ minWidth: 360 }}
-            value={selectedCafeIds}
-            onChange={setSelectedCafeIds}
-            optionFilterProp="label"
-            maxTagCount="responsive"
-            options={launchedCafes.map((c) => ({
-              value: c.id,
-              label: `${c.name}（${c.externalCafeId}）`,
-            }))}
-          />
-          <span style={{ color: 'rgba(0,0,0,0.65)', marginLeft: 8 }}>时间范围：</span>
-          <DatePicker.RangePicker
-            value={revenueDateRange}
-            onChange={(v) => {
-              if (v && v[0] && v[1]) setRevenueDateRange([v[0], v[1]]);
-            }}
-            allowClear={false}
-            disabledDate={(d) => d && (d.isAfter(MOCK_TODAY, 'day') || d.isBefore(MOCK_TODAY.subtract(89, 'day'), 'day'))}
-            presets={[
-              { label: '近 7 天', value: [MOCK_TODAY.subtract(6, 'day'), MOCK_TODAY] },
-              { label: '近 14 天', value: [MOCK_TODAY.subtract(13, 'day'), MOCK_TODAY] },
-              { label: '近 30 天', value: [MOCK_TODAY.subtract(29, 'day'), MOCK_TODAY] },
-              { label: '近 60 天', value: [MOCK_TODAY.subtract(59, 'day'), MOCK_TODAY] },
-              { label: '近 90 天', value: [MOCK_TODAY.subtract(89, 'day'), MOCK_TODAY] },
-            ]}
-          />
-          {(selectedCafeIds.length > 0 || !revenueDateRange[1].isSame(MOCK_TODAY, 'day') || !revenueDateRange[0].isSame(MOCK_TODAY.subtract(29, 'day'), 'day')) && (
-            <Button size="small" onClick={() => {
-              setSelectedCafeIds([]);
-              setRevenueDateRange([MOCK_TODAY.subtract(29, 'day'), MOCK_TODAY]);
-            }}>重置筛选</Button>
-          )}
-        </Space>
-
-        {launchedCafes.length === 0 ? (
-          <Empty description="暂无已上线网吧，无法查询流水" />
-        ) : (
+        {detailModal && (
           <>
-            <Row gutter={12} style={{ marginBottom: 12 }}>
-              <Col span={12}>
-                <Card size="small">
-                  <Statistic title="累计流水" value={revenueQuerySummary.totalRevenue} prefix="¥" groupSeparator="," />
-                </Card>
-              </Col>
-              <Col span={12}>
-                <Card size="small">
-                  <Statistic title="日均流水" value={revenueQuerySummary.dailyAvg} prefix="¥" groupSeparator="," />
-                </Card>
-              </Col>
-            </Row>
-
-            <Table
-              rowKey={(r) => `${r.cafeId}-${r.date}`}
-              size="small"
-              pagination={{ pageSize: 15, showSizeChanger: true, pageSizeOptions: ['15', '30', '60'] }}
-              dataSource={revenueQueryRecords}
-              scroll={{ x: 900 }}
-              columns={[
-                { title: '日期', dataIndex: 'date', width: 110, fixed: 'left' as const,
-                  render: (v: string) => {
-                    const dow = new Date(v).getDay();
-                    const isWeekend = dow === 0 || dow === 6;
-                    return <span style={{ color: isWeekend ? '#FF4D4F' : undefined }}>{v}{isWeekend && <Tag color="red" style={{ marginLeft: 6 }}>周末</Tag>}</span>;
-                  },
-                },
-                { title: '网吧', key: 'cafe', width: 280,
-                  render: (_: any, r) => (
-                    <Space direction="vertical" size={0}>
-                      <Space size={6}>
-                        <Tag color="blue">{r.externalCafeId}</Tag>
-                        <Tag color="gold">{r.cafeId}</Tag>
-                      </Space>
-                      <span style={{ fontWeight: 500 }}>{r.cafeName}</span>
-                      <Text type="secondary" style={{ fontSize: 12 }}>{r.province}·{r.city}</Text>
-                    </Space>
-                  ),
-                },
-                { title: '当日流水', dataIndex: 'revenue', width: 130, align: 'right' as const,
-                  sorter: (a, b) => a.revenue - b.revenue,
-                  render: (v: number) => <span className="money" style={{ fontWeight: 600 }}>¥ {v.toLocaleString()}</span>,
-                },
-                { title: '已活跃终端', dataIndex: 'activeTerminal', width: 110, align: 'right' as const,
-                  render: (v: number) => `${v} 台`,
-                },
-                { title: '日活终端', dataIndex: 'dailyActiveTerminal', width: 110, align: 'right' as const,
-                  render: (v: number) => `${v} 台`,
-                },
-              ]}
+            <Alert
+              type="info"
+              showIcon
+              style={{ marginBottom: 12 }}
+              message="可使用网吧ID和无盘系统登录密码登录霸服无盘系统"
             />
+            <Descriptions column={1} size="middle" bordered>
+              <Descriptions.Item label="网吧ID / 无盘账号">{detailModal.externalCafeId}</Descriptions.Item>
+              <Descriptions.Item label="系统 ID">{detailModal.id}</Descriptions.Item>
+              <Descriptions.Item label="所在地区">{detailModal.province}·{detailModal.city}</Descriptions.Item>
+              <Descriptions.Item label="详细地址">{detailModal.address}</Descriptions.Item>
+              <Descriptions.Item label="终端规模">{detailModal.terminalScaleCount} 台</Descriptions.Item>
+              <Descriptions.Item label="联系人">{detailModal.contact}</Descriptions.Item>
+              <Descriptions.Item label="联系电话">{detailModal.phone}</Descriptions.Item>
+              <Descriptions.Item label="无盘系统登录密码">
+                <Input.Password value={detailModal.cafePassword || '-'} readOnly visibilityToggle style={{ maxWidth: 260 }} />
+              </Descriptions.Item>
+            </Descriptions>
           </>
         )}
       </Modal>
@@ -504,19 +339,17 @@ export default function MyCafes() {
           description={
             <ul style={{ margin: '4px 0 0 0', paddingLeft: 20 }}>
               <li>门店「{deleteModal?.name}」将从当前代理账户中永久移除</li>
-              <li>平台审核中的申请会一并从列表移除</li>
-              <li>历史流水 / 终端数据无法恢复</li>
+              <li>终端数据无法恢复</li>
             </ul>
           }
         />
         {deleteModal && (
           <Descriptions column={1} size="small" bordered style={{ marginBottom: 12 }}>
-            <Descriptions.Item label="网吧 ID">{deleteModal.externalCafeId}</Descriptions.Item>
+            <Descriptions.Item label="网吧ID / 无盘账号">{deleteModal.externalCafeId}</Descriptions.Item>
             <Descriptions.Item label="系统 ID">{deleteModal.id || deleteModal.tempId}</Descriptions.Item>
             <Descriptions.Item label="当前状态">{statusTag(deleteModal)}</Descriptions.Item>
             <Descriptions.Item label="终端规模">{deleteModal.terminalScaleCount} 台</Descriptions.Item>
             <Descriptions.Item label="已活跃终端">{deleteModal.terminalCount} 台</Descriptions.Item>
-            <Descriptions.Item label="本月流水">¥ {deleteModal.monthRevenue.toLocaleString()}</Descriptions.Item>
           </Descriptions>
         )}
         <Paragraph style={{ color: '#FF4D4F', fontWeight: 600 }}>
